@@ -18,7 +18,9 @@ public final class Database {
         instance = name == null || name.equals("") ? InfluxDBFactory.connect(url) : InfluxDBFactory.connect(url, name, password);
         if (!instance.databaseExists(database)) instance.createDatabase(database);
         this.database = database;
-        instance.enableBatch(BatchOptions.DEFAULTS);
+        instance.setDatabase(database);
+        instance.setConsistency(InfluxDB.ConsistencyLevel.ALL);
+        instance.enableBatch();
     }
 
     public QueryResult query(final String command) {

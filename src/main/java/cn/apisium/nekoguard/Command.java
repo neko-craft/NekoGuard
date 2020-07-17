@@ -1,32 +1,31 @@
 package cn.apisium.nekoguard;
 
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
+import co.aikar.commands.BaseCommand;
+import co.aikar.commands.annotation.CommandAlias;
+import co.aikar.commands.annotation.CommandPermission;
+import co.aikar.commands.annotation.Subcommand;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
-public final class Command implements CommandExecutor {
+@CommandAlias("nekoguard|guard|ng")
+public final class Command extends BaseCommand {
     private final API api;
     private final Main main;
+
     Command(final Main main) {
         this.api = main.getApi();
         this.main = main;
     }
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull org.bukkit.command.Command command, @NotNull String label, @NotNull String[] args) {
-        if (args.length == 0) {
-            return true;
-        }
-        switch (args[0]) {
-            case "i":
-            case "inspect":
-                if (!(sender instanceof Player)) return false;
-                if (main.inspecting.contains(sender)) {
-                    main.inspecting.remove(sender);
-                } else main.inspecting.add((Player) sender);
-                break;
-        }
-        return false;
+    @Subcommand("inspect|i")
+    @CommandPermission("nekoguard.inspect")
+    public void onInspect(final Player player) {
+        if (main.inspecting.contains(player)) main.inspecting.remove(player);
+        else main.inspecting.add(player);
+    }
+
+    @Subcommand("lookup chat|l chat")
+    @CommandPermission("nekoguard.lookup.chat")
+    public void onLookupChat(final Player player) {
+        api.sendLookupChatMessage(player, null, 0);
     }
 }
