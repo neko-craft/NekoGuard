@@ -20,8 +20,6 @@ import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
@@ -30,7 +28,6 @@ import java.util.*;
 
 public final class Utils {
     private final static SimpleDateFormat FORMATTER = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private final static Class<?> nbtCompressedStreamToolsClass = ReflectionUtil.getNMSClass("NBTCompressedStreamTools");
     private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound");
     private final static Class<?> tileEntityClass = ReflectionUtil.getNMSClass("TileEntity");
     private static final Class<?> nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser");
@@ -39,8 +36,6 @@ public final class Utils {
     private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
     private final static Method getTileEntity = ReflectionUtil.getMethod(craftBlockEntityStateClass, "getTileEntity");
     private final static Method tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass);
-    private final static Method nbtSetInt = ReflectionUtil.getMethod(nbtTagCompoundClass, "setInt", String.class, int.class);
-    private final static Method writeNBT = ReflectionUtil.getMethod(nbtCompressedStreamToolsClass, "writeNBT", nbtTagCompoundClass, OutputStream.class);
     private static final Method saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass);
     private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
     private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
@@ -96,14 +91,13 @@ public final class Utils {
     public static String padPlayerName(@NotNull final String name) {
         return Strings.padEnd(name, 16, ' ');
     }
-    @SuppressWarnings("deprecation")
+
     @NotNull
-    public static TextComponent getPlayerPerformerNameComponent(@NotNull final String performer) {
+    public static TextComponent getPlayerPerformerNameComponent(@NotNull final String performer, final boolean pad) {
         final String name = getPlayerName(performer);
-        final TextComponent t = new TextComponent(padPlayerName(name));
+        final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
         t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, name));
-        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-            new TextComponent[] { new TextComponent(performer) }));
+        t.setHoverEvent(genTextHoverEvent(performer));
         return t;
     }
 
@@ -116,7 +110,7 @@ public final class Utils {
         } else if (performer.startsWith("%")) {
             s1 = "·½¿é:";
             s2 = getMaterialName(performer.substring(1));
-        } else return getPlayerPerformerNameComponent(performer);
+        } else return getPlayerPerformerNameComponent(performer, true);
         final TextComponent t = new TextComponent(s1);
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t1 = new TranslatableComponent(Strings.padEnd(s2, 16, ' '));
@@ -138,15 +132,12 @@ public final class Utils {
         return inst.toEpochMilli() * 1000000L + inst.getNano();
     }
 
-    @SuppressWarnings({ "ConstantConditions", "deprecation" })
+    @SuppressWarnings("ConstantConditions")
     @Nullable
     public static String serializeTileEntity(@NotNull final BlockState s) {
         if (!craftBlockEntityStateClass.isInstance(s)) return null;
-        try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-            final Object nbt = tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance());
-            nbtSetInt.invoke(nbt, "$v", Bukkit.getUnsafe().getDataVersion());
-            writeNBT.invoke(null, nbt, stream);
-            return Base64.getEncoder().encodeToString(stream.toByteArray());
+        try {
+            return tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance()).toString();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -179,7 +170,11 @@ public final class Utils {
     }
 
     @NotNull
-    public static String getBlockContainerId(@NotNull final String world, final int x, final int y, final int z) {
+    public static String getBlockPerformer(@NotNull final Block block) {
+        return getBlockPerformer(block.getWorld().getName(), block.getX(), block.getY(), block.getZ());
+    }
+    @NotNull
+    public static String getBlockPerformer(@NotNull final String world, final int x, final int y, final int z) {
         return "#" + world + "|" + x + "|" + y + "|" + z;
     }
 
@@ -191,7 +186,7 @@ public final class Utils {
             t1.setColor(ChatColor.WHITE);
             t.addExtra(t1);
             return t;
-        } else return getPlayerPerformerNameComponent(str);
+        } else return getPlayerPerformerNameComponent(str, true);
     }
 
     @SuppressWarnings("ConstantConditions")
@@ -226,9 +221,16 @@ public final class Utils {
     }
 
     @SuppressWarnings("deprecation")
+    private static HoverEvent genTextHoverEvent(@NotNull final String text) {
+        return new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponent[] { new TextComponent(text) });
+    }
+    @SuppressWarnings("deprecation")
+    private static HoverEvent genItemHoverEvent(@NotNull final String text) {
+        return new HoverEvent(HoverEvent.Action.SHOW_ITEM, new TextComponent[] { new TextComponent(text) });
+    }
+
     @NotNull
     public static BaseComponent getItemStackDetails(@NotNull final ItemStack is) {
-        final String json = serializeItemStack(is);
         final ItemMeta im = is.getItemMeta();
         final BaseComponent t;
         if (im.hasDisplayName()) t = new TextComponent("[" + im.getDisplayName() + "]");
@@ -242,8 +244,7 @@ public final class Utils {
             t1.setColor(ChatColor.GRAY);
             t.addExtra(t1);
         }
-        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM,
-            new TextComponent[] { new TextComponent(json) }));
+        t.setHoverEvent(genItemHoverEvent(serializeItemStack(is)));
         t.setColor(ChatColor.AQUA);
         return t;
     }
@@ -253,14 +254,12 @@ public final class Utils {
         return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "Î´Öª");
     }
 
-    @SuppressWarnings("deprecation")
     @NotNull
     public static TranslatableComponent getBlockComponent(@NotNull final String name) {
         final String id = getMaterialId(name);
         final TranslatableComponent t = new TranslatableComponent(Utils.getMaterialName(id));
         t.setColor(ChatColor.YELLOW);
-        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new TextComponent[] {
-            new TextComponent("{id:\"" + id + "\",Count:1b}") }));
+        t.setHoverEvent(genItemHoverEvent("{id:\"" + id + "\",Count:1b}"));
         return t;
     }
 
@@ -269,7 +268,6 @@ public final class Utils {
         throw (T) exception;
     }
 
-    @SuppressWarnings("deprecation")
     @NotNull
     public static TextComponent formatTime(@NotNull final String time, final long now) {
         final Instant instant = Instant.parse(time);
@@ -277,8 +275,22 @@ public final class Utils {
             formatDuration(now - instant.toEpochMilli()), 13, ' ') + "  ");
         t.setColor(ChatColor.GRAY);
         t.setItalic(true);
-        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponent[] {
-            new TextComponent(FORMATTER.format(Date.from(instant))) }));
+        t.setHoverEvent(genTextHoverEvent(FORMATTER.format(Date.from(instant))));
+        return t;
+    }
+
+    public static TextComponent getPlayerCommandNameComponent(@NotNull final String type, @NotNull final String performer) {
+        if (type.length() == 36) return getPlayerPerformerNameComponent(type, false);
+        final TextComponent t = new TextComponent("#" + type);
+        if (CommandSenderType.BLOCK.name().equals(type)) {
+            t.setHoverEvent(genTextHoverEvent(performer));
+            final String[] arr = performer.split("\\|");
+            t.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
+                "/tp " + arr[1] + " " + arr[2] + " " + arr[2] + " "));
+        } else if (CommandSenderType.ENTITY.name().equals(type)) {
+            t.setHoverEvent(genTextHoverEvent(performer));
+            t.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tp " + performer));
+        }
         return t;
     }
 }

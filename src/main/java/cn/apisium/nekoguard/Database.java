@@ -1,11 +1,11 @@
 package cn.apisium.nekoguard;
 
-import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
@@ -23,21 +23,25 @@ public final class Database {
         instance.enableBatch();
     }
 
-    public QueryResult query(final String command) {
+    @SuppressWarnings("unused")
+    @NotNull
+    public QueryResult query(@NotNull final String command) {
         return instance.query(new Query(command, database));
     }
 
-    public QueryResult query(final Query query) {
+    @SuppressWarnings("unused")
+    @NotNull
+    public QueryResult query(@NotNull final Query query) {
         return instance.query(query);
     }
 
-    public void query(final Query query, final Consumer<QueryResult> onSuccess) {
+    public void query(@NotNull final Query query, @NotNull final Consumer<QueryResult> onSuccess) {
         instance.query(query, onSuccess, Database::onFail);
     }
 
-    private static void onFail(final Throwable e) {
+    private static void onFail(@NotNull final Throwable e) {
         e.printStackTrace();
     }
 
-    public void write(final Point point) { instance.write(database, "", point); }
+    public void write(@NotNull final Point point) { instance.write(database, "", point); }
 }

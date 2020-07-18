@@ -31,6 +31,7 @@ public final class API {
     private final Database db;
     private final String chatRecords;
     private final String blockRecords;
+    private final String commandRecords;
     private final String containerRecords;
     private ArrayList<ItemActionRecord> itemActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
@@ -40,6 +41,7 @@ public final class API {
         blockRecords = prefix + "Blocks";
         containerRecords = prefix + "Containers";
         chatRecords = prefix + "Chats";
+        commandRecords = prefix + "Commands";
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -72,6 +74,26 @@ public final class API {
         db.write(Point.measurement(chatRecords)
             .tag("player", user)
             .addField("message", msg)
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordCommand(@NotNull final String command, @NotNull final String type, @Nullable final String performer) {
+        final Point.Builder builder = Point.measurement(commandRecords)
+            .tag("type", type)
+            .addField("command", command);
+        if (performer != null) builder.addField("performer", performer);
+        db.write(builder
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordCommand(@NotNull final String command, @NotNull final String performer) {
+        db.write(Point.measurement(commandRecords)
+            .tag("type", performer)
+            .addField("command", command)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -169,7 +191,7 @@ public final class API {
     }
     @NotNull
     public Query queryChatCount(@Nullable final String player, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final SelectQueryImpl query = select().count("message").from(db.database, chatRecords);
+        final SelectQueryImpl query = select().countAll().from(db.database, chatRecords);
         if (fn != null) fn.accept(query);
         return player == null ? query : query.where(eq("player", player));
     }
@@ -202,7 +224,7 @@ public final class API {
 
     @NotNull
     public WhereQueryImpl<?> queryContainerActions(@NotNull final String world, final int x, final int y, final int z) {
-        final String id = Utils.getBlockContainerId(world, x, y, z);
+        final String id = Utils.getBlockPerformer(world, x, y, z);
         return select()
             .from(db.database, containerRecords)
             .orderBy(desc())
@@ -212,7 +234,7 @@ public final class API {
 
     @NotNull
     public WhereQueryImpl<?> queryContainerActionsCount(@NotNull final String world, final int x, final int y, final int z, @Nullable final Consumer<WhereQueryImpl<?>> fn) {
-        final String id = Utils.getBlockContainerId(world, x, y, z);
+        final String id = Utils.getBlockPerformer(world, x, y, z);
         final WhereQueryImpl<?> query = select()
                 .countAll()
                 .from(db.database, containerRecords)
@@ -236,7 +258,7 @@ public final class API {
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
-                final String id = Utils.getBlockContainerId(world, x, y, z);
+                final String id = Utils.getBlockPerformer(world, x, y, z);
                 try {
                     for (final Object[] arr : mapper.all()) {
                         final TextComponent t = new TextComponent((String) arr[2]);
@@ -254,5 +276,51 @@ public final class API {
                 sender.sendMessage(Constants.makeFooter(page, all));
             })
         ));
+    }
+
+    @NotNull
+    public SelectQueryImpl queryCommand(@Nullable final String type, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        final SelectQueryImpl query = select()
+            .from(db.database, commandRecords)
+            .orderBy(desc());
+        if (fn != null) fn.accept(query);
+        if (type == null) return page == 0 ? query.limit(10) : query.limit(10, page * 10);
+        else {
+            final WhereQueryImpl<?> query2 = query.where(eq("type", type));
+            return page == 0 ? query2.limit(10) : query2.limit(10, page * 10);
+        }
+    }
+    @NotNull
+    public Query queryCommandCount(@Nullable final String type, @Nullable final Consumer<SelectQueryImpl> fn) {
+        final SelectQueryImpl query = select().countAll().from(db.database, commandRecords);
+        if (fn != null) fn.accept(query);
+        return type == null ? query : query.where(eq("type", type));
+    }
+
+    @SuppressWarnings("deprecation")
+    public void sendQueryCommandMessage(@NotNull final CommandSender sender, @Nullable String type, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        final String type1;
+        if (type != null && !CommandSenderType.getValueList().contains(type)) type1 = Bukkit.getOfflinePlayer(type).getUniqueId().toString();
+        else type1 = type;
+        db.query(queryCommandCount(type1, fn), getCountConsumer(all -> db.query(queryCommand(type1, page, fn), res -> {
+            final QueryResult.Series data = Utils.getFirstResult(res);
+            if (data == null) return;
+            final SeriesMapper.Mapper mapper = Mappers.COMMANDS.parse(data);
+            sender.sendMessage(Constants.HEADER);
+            final long now = Instant.now().toEpochMilli();
+            try {
+                for (final Object[] arr : mapper.all()) {
+                    final TextComponent t = new TextComponent(": " + arr[3]);
+                    t.setColor(ChatColor.GRAY);
+                    sender.sendMessage(Utils.formatTime((String) arr[0], now),
+                        Utils.getPlayerCommandNameComponent((String) arr[1], (String) arr[2]),
+                        t
+                    );
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            sender.sendMessage(Constants.makeFooter(page, all));
+        })));
     }
 }

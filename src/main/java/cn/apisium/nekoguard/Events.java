@@ -1,7 +1,10 @@
 package cn.apisium.nekoguard;
 
+import cn.apisium.nekoguard.utils.CommandSenderType;
 import cn.apisium.nekoguard.utils.Utils;
 import org.bukkit.block.*;
+import org.bukkit.command.*;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -16,7 +19,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -124,5 +129,25 @@ public final class Events implements Listener {
                     "", Utils.getInventoryId(inv));
                 break;
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerCommand(final PlayerCommandPreprocessEvent e) {
+        api.recordCommand(e.getMessage(), e.getPlayer().getUniqueId().toString());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onServerCommand(final ServerCommandEvent e) {
+        final CommandSender sender = e.getSender();
+        String performer = null;
+        final CommandSenderType type = CommandSenderType.getCommandSenderType(sender);
+        switch (type) {
+            case BLOCK:
+                performer = Utils.getBlockPerformer(((BlockCommandSender) sender).getBlock());
+                break;
+            case ENTITY:
+                performer = ((Entity) sender).getUniqueId().toString();
+        }
+        api.recordCommand(e.getCommand(), type.name(), performer);
     }
 }

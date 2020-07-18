@@ -16,11 +16,15 @@ import java.util.Arrays;
 public final class Commands extends BaseCommand {
     private final API api;
     private final Main main;
-    private final static OptionParser LOOKUP_CHAT = new OptionParser();
+    private final static OptionParser LOOKUP_CHATS = new OptionParser(),
+            LOOKUP_COMMANDS = new OptionParser();
 
     static {
-        LOOKUP_CHAT.acceptsAll(Arrays.asList("p", "player")).withOptionalArg().ofType(String.class);
-        LOOKUP_CHAT.acceptsAll(Arrays.asList("t", "time")).withOptionalArg().ofType(String.class);
+        LOOKUP_CHATS.acceptsAll(Arrays.asList("p", "player")).withOptionalArg().ofType(String.class);
+        LOOKUP_CHATS.acceptsAll(Arrays.asList("t", "time")).withOptionalArg().ofType(String.class);
+
+        LOOKUP_COMMANDS.acceptsAll(Arrays.asList("p", "performer")).withOptionalArg().ofType(String.class);
+        LOOKUP_COMMANDS.acceptsAll(Arrays.asList("t", "time")).withOptionalArg().ofType(String.class);
     }
 
     Commands(final Main main) {
@@ -40,9 +44,18 @@ public final class Commands extends BaseCommand {
         @Subcommand("chat")
         @CommandPermission("nekoguard.lookup.chat")
         public void onLookupChat(final CommandSender sender, final String[] args) {
-            final OptionSet cmd = LOOKUP_CHAT.parse(args);
+            final OptionSet cmd = LOOKUP_CHATS.parse(args);
             final Object time = cmd.valueOf("time");
             api.sendQueryChatMessage(sender, (String) cmd.valueOf("player"), 0,
+                time == null ? null : it -> it.where(new SimpleTimeClause((String) time)));
+        }
+
+        @Subcommand("command")
+        @CommandPermission("nekoguard.lookup.command")
+        public void onLookupCommand(final CommandSender sender, final String[] args) {
+            final OptionSet cmd = LOOKUP_CHATS.parse(args);
+            final Object time = cmd.valueOf("time");
+            api.sendQueryCommandMessage(sender, (String) cmd.valueOf("performer"), 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause((String) time)));
         }
     }

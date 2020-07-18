@@ -54,6 +54,7 @@ public final class Main extends JavaPlugin {
         if (db != null) db.instance.close();
     }
 
+    @SuppressWarnings("unused")
     public Database getDatabase() { return db; }
 
     public API getApi() { return api; }

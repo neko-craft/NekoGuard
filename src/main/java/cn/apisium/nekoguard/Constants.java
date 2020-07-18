@@ -7,7 +7,6 @@ import org.bukkit.event.inventory.InventoryType;
 
 public final class Constants {
     public static final String HEADER = "¡ìb¡ìm                    ¡ìr ¡ìe[NekoGuard] ¡ìb¡ìm                    ";
-    private static final String FOOTER = "¡ìb¡ìm                  ";
 
     public static boolean isNeedToRecordContainerAction(final InventoryType type) {
         switch (type) {
