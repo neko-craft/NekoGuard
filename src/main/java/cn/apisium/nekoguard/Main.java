@@ -1,11 +1,7 @@
 package cn.apisium.nekoguard;
 
 import co.aikar.commands.PaperCommandManager;
-import org.bukkit.Material;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.annotation.command.Command;
@@ -50,19 +46,7 @@ public final class Main extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new Events(this), this);
         final PaperCommandManager manager = new PaperCommandManager(this);
         manager.enableUnstableAPI("help");
-        manager.registerCommand(new cn.apisium.nekoguard.Command(this));
-
-        final ItemStack is = new ItemStack(Material.SHULKER_BOX);
-        is.setAmount(6);
-        is.setLore(Arrays.asList("aawd", "bwdw", "dawdwd", "aaa"));
-        final ItemMeta im = is.getItemMeta();
-        im.setDisplayName("awdwd");
-        im.setCustomModelData(4);
-        is.setItemMeta(im);
-        is.addUnsafeEnchantment(Enchantment.KNOCKBACK, 10);
-        is.addUnsafeEnchantment(Enchantment.DAMAGE_UNDEAD, 10);
-        is.addUnsafeEnchantment(Enchantment.DAMAGE_ALL, 10);
-        is.addUnsafeEnchantment(Enchantment.DAMAGE_ARTHROPODS, 10);
+        manager.registerCommand(new cn.apisium.nekoguard.Commands(this));
     }
 
     @Override

@@ -2,10 +2,7 @@ package cn.apisium.nekoguard.utils;
 
 import com.google.common.base.Strings;
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.TranslatableComponent;
+import net.md_5.bungee.api.chat.*;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
@@ -20,18 +17,23 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.influxdb.dto.QueryResult;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 
 public final class Utils {
+    private final static SimpleDateFormat FORMATTER = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private final static Class<?> nbtCompressedStreamToolsClass = ReflectionUtil.getNMSClass("NBTCompressedStreamTools");
     private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound");
     private final static Class<?> tileEntityClass = ReflectionUtil.getNMSClass("TileEntity");
+    private static final Class<?> nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser");
     private static final Class<?> nmsItemStackClass = ReflectionUtil.getNMSClass("ItemStack");
     private final static Class<?> craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState");
     private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
@@ -41,21 +43,36 @@ public final class Utils {
     private final static Method writeNBT = ReflectionUtil.getMethod(nbtCompressedStreamToolsClass, "writeNBT", nbtTagCompoundClass, OutputStream.class);
     private static final Method saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass);
     private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
+    private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
+    private static final Method itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, "fromCompound", nbtTagCompoundClass);
+    private static final Method itemStackAsCraftMirror = ReflectionUtil.getMethod(craftItemStackClass, "asCraftMirror", nmsItemStackClass);
     private static final Field craftItemStackHandleField = ReflectionUtil.getField(craftItemStackClass, "handle", true);
     private Utils() {}
 
-    public static String getMaterialName(final Material material) {
-        return (material.isBlock() ? "block." : "item.") + material.getKey().toString().replace(':', '.');
-    }
-    public static String getMaterialName(final String data) {
-        return "block." + data.split("\\[", 2)[0].replace(':', '.');
+    static {
+        FORMATTER.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
-    public static String getEntityName(final String data) {
+    @NotNull
+    public static String getMaterialName(@NotNull final Material material) {
+        return (material.isBlock() ? "block." : "item.") + material.getKey().toString().replace(':', '.');
+    }
+    @NotNull
+    public static String getMaterialName(@NotNull final String data) {
+        return "block." + getMaterialId(data).replace(':', '.');
+    }
+    @NotNull
+    public static String getMaterialId(@NotNull final String data) {
+        return data.split("\\[", 2)[0].split("\\|\\$TILE\\$\\|", 2)[0];
+    }
+
+    @NotNull
+    public static String getEntityName(@NotNull final String data) {
         return "entity." + data.split("\\[", 2)[0].replace(':', '.');
     }
 
-    public static List<QueryResult.Result> getResult(final QueryResult res) {
+    @Nullable
+    public static List<QueryResult.Result> getResult(@NotNull final QueryResult res) {
         if (res.hasError()) {
             Bukkit.getLogger().warning(res.getError());
             return null;
@@ -63,7 +80,8 @@ public final class Utils {
         return res.getResults();
     }
 
-    public static QueryResult.Series getFirstResult(final QueryResult res) {
+    @Nullable
+    public static QueryResult.Series getFirstResult(@NotNull final QueryResult res) {
         final List<QueryResult.Result> list = getResult(res);
         if (list == null || list.isEmpty()) return null;
         final QueryResult.Result ret = list.get(0);
@@ -74,12 +92,23 @@ public final class Utils {
         return ret.getSeries() == null || ret.getSeries().isEmpty() ? null : ret.getSeries().get(0);
     }
 
-    public static TextComponent getPlayerPerformerName(final String performer) {
-        return new TextComponent(Strings.padEnd((String) ObjectUtils.defaultIfNull(
-            Bukkit.getOfflinePlayer(UUID.fromString(performer)).getName(), "未知"), 16, ' '));
+    @NotNull
+    public static String padPlayerName(@NotNull final String name) {
+        return Strings.padEnd(name, 16, ' ');
+    }
+    @SuppressWarnings("deprecation")
+    @NotNull
+    public static TextComponent getPlayerPerformerNameComponent(@NotNull final String performer) {
+        final String name = getPlayerName(performer);
+        final TextComponent t = new TextComponent(padPlayerName(name));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, name));
+        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+            new TextComponent[] { new TextComponent(performer) }));
+        return t;
     }
 
-    public static BaseComponent getPerformerName(final String performer) {
+    @NotNull
+    public static BaseComponent getPerformerName(@NotNull final String performer) {
         final String s1, s2;
         if (performer.startsWith("#")) {
             s1 = "实体:";
@@ -87,7 +116,7 @@ public final class Utils {
         } else if (performer.startsWith("%")) {
             s1 = "方块:";
             s2 = getMaterialName(performer.substring(1));
-        } else return getPlayerPerformerName(performer);
+        } else return getPlayerPerformerNameComponent(performer);
         final TextComponent t = new TextComponent(s1);
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t1 = new TranslatableComponent(Strings.padEnd(s2, 16, ' '));
@@ -96,10 +125,9 @@ public final class Utils {
         return t;
     }
 
-    public static String formatDuration(final String start, final long end) {
-        final String str = DurationFormatUtils.formatDuration(
-            (end - Instant.parse(start).toEpochMilli()),
-            "d天H时m分s秒前");
+    @NotNull
+    public static String formatDuration(final long time) {
+        final String str = DurationFormatUtils.formatDuration(time, "d天H时m分s秒前");
         return str
             .replace("0天", "")
             .replace("0时", "");
@@ -111,7 +139,8 @@ public final class Utils {
     }
 
     @SuppressWarnings({ "ConstantConditions", "deprecation" })
-    public static String serializeTileEntity(final BlockState s) {
+    @Nullable
+    public static String serializeTileEntity(@NotNull final BlockState s) {
         if (!craftBlockEntityStateClass.isInstance(s)) return null;
         try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             final Object nbt = tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance());
@@ -124,14 +153,8 @@ public final class Utils {
         }
     }
 
-    public static String serializeItemStack(final ItemStack is) {
-        return Base64.getEncoder().encodeToString(is.serializeAsBytes());
-    }
-    public static ItemStack deserializeItemStack(final String data) {
-        return ItemStack.deserializeBytes(Base64.getDecoder().decode(data));
-    }
-
-    public static String getFullBlockData(final Block block) {
+    @NotNull
+    public static String getFullBlockData(@NotNull final Block block) {
         String str = block.getBlockData().getAsString();
         final BlockState bs = block.getState();
         if (bs instanceof TileState) {
@@ -144,9 +167,10 @@ public final class Utils {
         return str;
     }
 
-    public static String getInventoryId(final Inventory inventory) {
+    @NotNull
+    public static String getInventoryId(@NotNull final Inventory inventory) {
         final InventoryHolder holder = inventory.getHolder();
-        if (holder == null) return null;
+        if (holder == null) return "";
         if (holder instanceof Entity) return ((Entity) holder).getUniqueId().toString();
         if (holder instanceof Container) {
             final Container b = (Container) holder;
@@ -154,32 +178,46 @@ public final class Utils {
         } else return "";
     }
 
-    public static String getBlockContainerId(final String world, final int x, final int y, final int z) {
+    @NotNull
+    public static String getBlockContainerId(@NotNull final String world, final int x, final int y, final int z) {
         return "#" + world + "|" + x + "|" + y + "|" + z;
     }
 
-    public static TextComponent getContainerPerformerName(final String str) {
+    @NotNull
+    public static TextComponent getContainerPerformerName(@NotNull final String str) {
         if (str.startsWith("#")) {
-            final TextComponent t = new TextComponent("方块/实体:"), t1 = new TextComponent(str.substring(1));
+            final TextComponent t = new TextComponent("非玩家:"), t1 = new TextComponent(Strings.padEnd(str.substring(1), 9, ' '));
             t.setColor(ChatColor.GRAY);
             t1.setColor(ChatColor.WHITE);
             t.addExtra(t1);
             return t;
-        } else return getPlayerPerformerName(str);
+        } else return getPlayerPerformerNameComponent(str);
     }
 
     @SuppressWarnings("ConstantConditions")
-    private static String convertItemStackToJson(final ItemStack itemStack) {
+    @NotNull
+    public static String serializeItemStack(@NotNull final ItemStack itemStack) {
         try {
             return saveNmsItemStack.invoke(getNMSItemStack(itemStack), nbtTagCompoundClass.newInstance()).toString();
         } catch (Exception t) {
-            t.printStackTrace();
-            return null;
+            throwSneaky(t);
+            throw new RuntimeException();
+        }
+    }
+    @NotNull
+    public static ItemStack deserializeItemStack(@NotNull final String data) {
+        try {
+            return (ItemStack) itemStackAsCraftMirror.invoke(null,
+                itemStackFromCompound.invoke(null, nbtParserParse.invoke(null, data)));
+        } catch (Exception t) {
+            throwSneaky(t);
+            throw new RuntimeException();
         }
     }
 
     @SuppressWarnings("ConstantConditions")
-    private static Object getNMSItemStack(final ItemStack itemStack) throws Exception {
+    @NotNull
+    private static Object getNMSItemStack(@NotNull final ItemStack itemStack) throws Exception {
         Object nms = null;
         if (craftItemStackClass.isInstance(itemStack)) try {
             nms = craftItemStackHandleField.get(itemStack);
@@ -188,8 +226,9 @@ public final class Utils {
     }
 
     @SuppressWarnings("deprecation")
-    public static BaseComponent getItemStackDetails(final ItemStack is) {
-        final String json = convertItemStackToJson(is);
+    @NotNull
+    public static BaseComponent getItemStackDetails(@NotNull final ItemStack is) {
+        final String json = serializeItemStack(is);
         final ItemMeta im = is.getItemMeta();
         final BaseComponent t;
         if (im.hasDisplayName()) t = new TextComponent("[" + im.getDisplayName() + "]");
@@ -203,9 +242,43 @@ public final class Utils {
             t1.setColor(ChatColor.GRAY);
             t.addExtra(t1);
         }
-        if (json != null) t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM,
+        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM,
             new TextComponent[] { new TextComponent(json) }));
         t.setColor(ChatColor.AQUA);
+        return t;
+    }
+
+    @NotNull
+    public static String getPlayerName(@NotNull final String player) {
+        return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "未知");
+    }
+
+    @SuppressWarnings("deprecation")
+    @NotNull
+    public static TranslatableComponent getBlockComponent(@NotNull final String name) {
+        final String id = getMaterialId(name);
+        final TranslatableComponent t = new TranslatableComponent(Utils.getMaterialName(id));
+        t.setColor(ChatColor.YELLOW);
+        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new TextComponent[] {
+            new TextComponent("{id:\"" + id + "\",Count:1b}") }));
+        return t;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void throwSneaky(@NotNull Throwable exception) throws T {
+        throw (T) exception;
+    }
+
+    @SuppressWarnings("deprecation")
+    @NotNull
+    public static TextComponent formatTime(@NotNull final String time, final long now) {
+        final Instant instant = Instant.parse(time);
+        final TextComponent t = new TextComponent("   " + Strings.padEnd(
+            formatDuration(now - instant.toEpochMilli()), 13, ' ') + "  ");
+        t.setColor(ChatColor.GRAY);
+        t.setItalic(true);
+        t.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponent[] {
+            new TextComponent(FORMATTER.format(Date.from(instant))) }));
         return t;
     }
 }

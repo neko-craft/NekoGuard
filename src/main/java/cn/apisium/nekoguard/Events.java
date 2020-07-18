@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -37,7 +38,7 @@ public final class Events implements Listener {
         if (main.inspecting.contains(e.getPlayer())) {
             final Block b = e.getBlock();
             e.setCancelled(true);
-            api.sendInspectBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            api.sendQueryBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
         } else api.recordBlock(e.getBlock(), e.getPlayer().getUniqueId().toString(), "1");
     }
 
@@ -62,10 +63,12 @@ public final class Events implements Listener {
     public void onPlayerInteract(final PlayerInteractEvent e) {
         final Player p = e.getPlayer();
         final Block b = e.getClickedBlock();
-        if (!e.hasBlock() || b == null || !main.inspecting.contains(p)) return;
+        if (!e.hasBlock() || b == null || e.getAction() == Action.PHYSICAL ||
+            (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
+            !main.inspecting.contains(p)) return;
         e.setCancelled(true);
-        if (b.getState() instanceof Container) api.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-        else api.sendInspectBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        if (b.getState() instanceof Container) api.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0, null);
+        else api.sendQueryBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
