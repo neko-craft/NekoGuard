@@ -66,9 +66,8 @@ public final class ReflectionUtil {
             loadedNMSClasses.put(nmsClassName, clazz);
             return clazz;
         } catch (Throwable t) {
-            t.printStackTrace();
-            loadedNMSClasses.put(nmsClassName, null);
-            return null;
+            Utils.throwSneaky(t);
+            throw new RuntimeException();
         }
     }
 
@@ -87,9 +86,8 @@ public final class ReflectionUtil {
             loadedOBCClasses.put(obcClassName, clazz);
             return clazz;
         } catch (Throwable t) {
-            t.printStackTrace();
-            loadedOBCClasses.put(obcClassName, null);
-            return null;
+            Utils.throwSneaky(t);
+            throw new RuntimeException();
         }
     }
 
@@ -102,17 +100,13 @@ public final class ReflectionUtil {
     @SuppressWarnings("unused")
     public static Object getConnection(final Player player) {
         final Method getHandleMethod = getMethod(player.getClass(), "getHandle");
-
-        if (getHandleMethod != null) {
-            try {
-                Object nmsPlayer = getHandleMethod.invoke(player);
-                return getField(nmsPlayer.getClass(), "playerConnection").get(nmsPlayer);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            Object nmsPlayer = getHandleMethod.invoke(player);
+            return getField(nmsPlayer.getClass(), "playerConnection").get(nmsPlayer);
+        } catch (Exception e) {
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
         }
-
-        return null;
     }
 
     /**
@@ -127,7 +121,8 @@ public final class ReflectionUtil {
         try {
             return clazz.getConstructor(params);
         } catch (NoSuchMethodException e) {
-            return null;
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
         }
     }
 
@@ -154,9 +149,8 @@ public final class ReflectionUtil {
             if (declared) method.setAccessible(true);
             return method;
         } catch (Exception e) {
-            e.printStackTrace();
-            methods.put(methodName, null);
-            return null;
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
         }
     }
 

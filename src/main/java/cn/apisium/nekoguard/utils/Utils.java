@@ -1,5 +1,6 @@
 package cn.apisium.nekoguard.utils;
 
+import cn.apisium.nekoguard.Constants;
 import com.google.common.base.Strings;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.*;
@@ -20,28 +21,12 @@ import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 
 public final class Utils {
     private final static SimpleDateFormat FORMATTER = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound");
-    private final static Class<?> tileEntityClass = ReflectionUtil.getNMSClass("TileEntity");
-    private static final Class<?> nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser");
-    private static final Class<?> nmsItemStackClass = ReflectionUtil.getNMSClass("ItemStack");
-    private final static Class<?> craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState");
-    private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
-    private final static Method getTileEntity = ReflectionUtil.getMethod(craftBlockEntityStateClass, "getTileEntity");
-    private final static Method tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass);
-    private static final Method saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass);
-    private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
-    private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
-    private static final Method itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, "fromCompound", nbtTagCompoundClass);
-    private static final Method itemStackAsCraftMirror = ReflectionUtil.getMethod(craftItemStackClass, "asCraftMirror", nmsItemStackClass);
-    private static final Field craftItemStackHandleField = ReflectionUtil.getField(craftItemStackClass, "handle", true);
     private Utils() {}
 
     static {
@@ -58,7 +43,7 @@ public final class Utils {
     }
     @NotNull
     public static String getMaterialId(@NotNull final String data) {
-        return data.split("\\[", 2)[0].split("\\|\\$TILE\\$\\|", 2)[0];
+        return data.split("\\[", 2)[0].split(Constants.TILE, 2)[0];
     }
 
     @NotNull
@@ -132,30 +117,23 @@ public final class Utils {
         return inst.toEpochMilli() * 1000000L + inst.getNano();
     }
 
-    @SuppressWarnings("ConstantConditions")
-    @Nullable
-    public static String serializeTileEntity(@NotNull final BlockState s) {
-        if (!craftBlockEntityStateClass.isInstance(s)) return null;
-        try {
-            return tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance()).toString();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     @NotNull
-    public static String getFullBlockData(@NotNull final Block block) {
+    public static String getFullBlockData(@NotNull final BlockState block) {
         String str = block.getBlockData().getAsString();
-        final BlockState bs = block.getState();
-        if (bs instanceof TileState) {
-            final String s = Utils.serializeTileEntity(bs);
+        if (block instanceof TileState) {
+            final String s = NMSUtils.serializeTileEntity(block);
             if (s != null) {
-                str += "|$TILE$|";
+                str += Constants.TILE;
                 str += s;
             }
         }
         return str;
+    }
+
+    public static void patchDataToBlock(@NotNull final Block block, @NotNull final String data) {
+        final String[] arr = data.split(Constants.TILE, 2);
+        block.setBlockData(Bukkit.createBlockData(arr[0]));
+        if (arr.length == 2) NMSUtils.patchTileStateData(block, arr[1]);
     }
 
     @NotNull
@@ -189,42 +167,13 @@ public final class Utils {
         } else return getPlayerPerformerNameComponent(str, true);
     }
 
-    @SuppressWarnings("ConstantConditions")
-    @NotNull
-    public static String serializeItemStack(@NotNull final ItemStack itemStack) {
-        try {
-            return saveNmsItemStack.invoke(getNMSItemStack(itemStack), nbtTagCompoundClass.newInstance()).toString();
-        } catch (Exception t) {
-            throwSneaky(t);
-            throw new RuntimeException();
-        }
-    }
-    @NotNull
-    public static ItemStack deserializeItemStack(@NotNull final String data) {
-        try {
-            return (ItemStack) itemStackAsCraftMirror.invoke(null,
-                itemStackFromCompound.invoke(null, nbtParserParse.invoke(null, data)));
-        } catch (Exception t) {
-            throwSneaky(t);
-            throw new RuntimeException();
-        }
-    }
-
-    @SuppressWarnings("ConstantConditions")
-    @NotNull
-    private static Object getNMSItemStack(@NotNull final ItemStack itemStack) throws Exception {
-        Object nms = null;
-        if (craftItemStackClass.isInstance(itemStack)) try {
-            nms = craftItemStackHandleField.get(itemStack);
-        } catch (Exception ignored) { }
-        return nms == null ? asNMSCopyMethod.invoke(null, itemStack) : nms;
-    }
-
     @SuppressWarnings("deprecation")
+    @NotNull
     private static HoverEvent genTextHoverEvent(@NotNull final String text) {
         return new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponent[] { new TextComponent(text) });
     }
     @SuppressWarnings("deprecation")
+    @NotNull
     private static HoverEvent genItemHoverEvent(@NotNull final String text) {
         return new HoverEvent(HoverEvent.Action.SHOW_ITEM, new TextComponent[] { new TextComponent(text) });
     }
@@ -244,7 +193,7 @@ public final class Utils {
             t1.setColor(ChatColor.GRAY);
             t.addExtra(t1);
         }
-        t.setHoverEvent(genItemHoverEvent(serializeItemStack(is)));
+        t.setHoverEvent(genItemHoverEvent(NMSUtils.serializeItemStack(is)));
         t.setColor(ChatColor.AQUA);
         return t;
     }
@@ -264,7 +213,7 @@ public final class Utils {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Throwable> void throwSneaky(@NotNull Throwable exception) throws T {
+    public static <T extends Throwable> void throwSneaky(@NotNull Throwable exception) throws T {
         throw (T) exception;
     }
 
@@ -279,18 +228,55 @@ public final class Utils {
         return t;
     }
 
+    @NotNull
     public static TextComponent getPlayerCommandNameComponent(@NotNull final String type, @NotNull final String performer) {
         if (type.length() == 36) return getPlayerPerformerNameComponent(type, false);
         final TextComponent t = new TextComponent("#" + type);
         if (CommandSenderType.BLOCK.name().equals(type)) {
             t.setHoverEvent(genTextHoverEvent(performer));
-            final String[] arr = performer.split("\\|");
             t.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
-                "/tp " + arr[1] + " " + arr[2] + " " + arr[2] + " "));
+                "/tp " + performerToLocation(performer)[1]));
         } else if (CommandSenderType.ENTITY.name().equals(type)) {
             t.setHoverEvent(genTextHoverEvent(performer));
-            t.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tp " + performer));
+            t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + performer));
         }
         return t;
+    }
+
+    @NotNull
+    public static TextComponent getBlockActionComponent(final boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
+        final TextComponent t = new TextComponent(isAdd ? " + " : " - ");
+        t.setColor(isAdd ? ChatColor.GREEN : ChatColor.RED);
+        final String loc = " " + x + " " + y + " " + z;
+        t.setHoverEvent(genTextHoverEvent(world + loc));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp" + loc));
+        return t;
+    }
+    @NotNull
+    public static String[] performerToLocation(@NotNull final String name) {
+        if (!name.startsWith("#")) return new String[] { "", name };
+        final String[] arr = name.split("\\|", 2);
+        final String str = arr[0].substring(1);
+        return arr.length == 2
+            ? new String[] { str, arr[1].replace('|', ' ') }
+            : new String[] { "", str.replace('|', ' ') };
+    }
+    @NotNull
+    public static TextComponent getContainerActionComponent(final boolean isAdd, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
+        final TextComponent t = new TextComponent(isAdd ? " + " : " - ");
+        t.setColor(isAdd ? ChatColor.GREEN : ChatColor.RED);
+        final String p;
+        if (performer.equals(source)) p = target;
+        else if (performer.equals(target)) p = source;
+        else p = source.isEmpty() ? target : source;
+        final String[] arr = performerToLocation(p);
+        t.setHoverEvent(genTextHoverEvent(arr[0] + " " + arr[1]));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + arr[1]));
+        return t;
+    }
+
+    @NotNull
+    public static String getChunkKey(@NotNull final String world, final int x, final int z) {
+        return world + "|" + (x >> 4) + "|" + (z >> 4);
     }
 }

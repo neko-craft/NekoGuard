@@ -1,6 +1,7 @@
 package cn.apisium.nekoguard.utils;
 
 import org.influxdb.dto.QueryResult;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,21 +12,25 @@ public final class SeriesMapper {
     private final int size;
     private final String[] columns;
 
-    public SeriesMapper(final String ...keys) {
+    public SeriesMapper(@NotNull final String ...keys) {
         for (int i = 0; i < keys.length; i++) map.put(keys[i], i);
         size = keys.length;
         columns = keys;
     }
+
+    @SuppressWarnings("unused")
+    @NotNull
     public String[] getColumns() { return columns; }
 
-    public final Mapper parse(final QueryResult.Series data) {
+    @NotNull
+    public final Mapper parse(@NotNull final QueryResult.Series data) {
         return new Mapper(data);
     }
 
     public final class Mapper {
         private final QueryResult.Series data;
         private final int[] map2;
-        protected Mapper(final QueryResult.Series data) {
+        protected Mapper(@NotNull final QueryResult.Series data) {
             this.data = data;
             map2 = new int[size];
             final List<String> list = data.getColumns();
@@ -36,6 +41,7 @@ public final class SeriesMapper {
             }
         }
 
+        @NotNull
         public Object[] get(final int index) {
             final List<?> list = data.getValues().get(index);
             int i = list.size();
@@ -44,6 +50,7 @@ public final class SeriesMapper {
             return arr;
         }
 
+        @NotNull
         public Object[][] allArray() {
             int i = data.getValues().size();
             final Object[][] arr = new Object[i][size];
@@ -51,6 +58,7 @@ public final class SeriesMapper {
             return arr;
         }
 
+        @NotNull
         public List<Object[]> all() {
             return Arrays.asList(allArray());
         }

@@ -6,6 +6,8 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.event.inventory.InventoryType;
 
 public final class Constants {
+    public static final String TILE = "°ÏTILE°Ï";
+    public static final String BLOCK_ACTION_BREAK = "0", BLOCK_ACTION_PLACE = "1";
     public static final String HEADER = "°Ïb°Ïm                    °Ïr °Ïe[NekoGuard] °Ïb°Ïm                    ";
 
     public static boolean isNeedToRecordContainerAction(final InventoryType type) {

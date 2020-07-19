@@ -23,8 +23,10 @@ import java.util.*;
 public final class Main extends JavaPlugin {
     private Database db;
     private API api;
-
+    private static Main INSTANCE;
     protected final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
+
+    { INSTANCE = this; }
 
     @SuppressWarnings("deprecation")
     @Override
@@ -58,4 +60,6 @@ public final class Main extends JavaPlugin {
     public Database getDatabase() { return db; }
 
     public API getApi() { return api; }
+
+    public static Main getInstance() { return INSTANCE; }
 }

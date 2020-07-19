@@ -2,25 +2,23 @@ package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.CommandSenderType;
 import cn.apisium.nekoguard.utils.Utils;
+import org.bukkit.Material;
 import org.bukkit.block.*;
 import org.bukkit.command.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Snowman;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockExplodeEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.*;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -35,7 +33,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(final BlockBreakEvent e) {
-        api.recordBlock(e.getBlock(), e.getPlayer().getUniqueId().toString(), "0");
+        api.recordBlockBreak(e.getBlock(), e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -44,24 +42,68 @@ public final class Events implements Listener {
             final Block b = e.getBlock();
             e.setCancelled(true);
             api.sendQueryBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-        } else api.recordBlock(e.getBlock(), e.getPlayer().getUniqueId().toString(), "1");
+        } else api.recordBlockPlace(e.getBlock(), e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityExplode(final EntityExplodeEvent e) {
         if (e.blockList().isEmpty()) return;
-        api.recordBlocks(e.blockList(), "#" + e.getEntityType().getKey().toString(), "0");
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onChat(final AsyncPlayerChatEvent e) {
-        api.recordChat(e.getMessage(), e.getPlayer().getUniqueId().toString());
+        api.recordBlocksBreak(e.blockList(), "#" + e.getEntityType().getKey().toString());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockExplode(final BlockExplodeEvent e) {
         if (e.blockList().isEmpty()) return;
-        api.recordBlocks(e.blockList(), "%" + e.getBlock().getType().getKey(), "0");
+        api.recordBlocksBreak(e.blockList(), "%" + e.getBlock().getType().getKey());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockSpread(final BlockSpreadEvent e) {
+        final String id = "%" + e.getBlock().getType().getKey();
+        api.recordBlockBreak(e.getBlock(), id);
+        api.recordBlockPlace(e.getNewState(), id);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockBurn(final BlockBurnEvent e) {
+        api.recordBlockBreak(e.getBlock(), "%" + Material.FIRE.getKey());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerBucketFill(final PlayerBucketFillEvent e) {
+        api.recordBlockBreak(e.getBlock(), e.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerBucketEmpty(final PlayerBucketEmptyEvent e) {
+        api.recordBlockBreak(e.getBlock(), e.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockForm(final BlockFormEvent e) {
+        final String id = "%" + e.getNewState().getType().getKey();
+        api.recordBlockBreak(e.getBlock(), id);
+        api.recordBlockPlace(e.getNewState(), id);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityBlockForm(final EntityBlockFormEvent e) {
+        if (!(e.getEntity() instanceof Snowman)) return;
+        final String id = "#" + e.getEntity().getType().getKey();
+        api.recordBlockBreak(e.getBlock(), id);
+        api.recordBlockPlace(e.getNewState(), id);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityChangeBlock(final EntityChangeBlockEvent e) {
+        final String id = "#" + e.getEntityType().getKey();
+        api.recordBlockBreak(e.getBlock(), id);
+        if (!e.getTo().isAir()) api.recordBlockPlace(e.getBlock().getState(), e.getTo(), id);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onChat(final AsyncPlayerChatEvent e) {
+        api.recordChat(e.getMessage(), e.getPlayer().getUniqueId().toString());
     }
 
     @EventHandler
@@ -133,21 +175,25 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerCommand(final PlayerCommandPreprocessEvent e) {
-        api.recordCommand(e.getMessage(), e.getPlayer().getUniqueId().toString());
+        try {
+            api.recordCommand(e.getMessage(), e.getPlayer().getUniqueId().toString());
+        } catch (final NoClassDefFoundError ignored) { }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onServerCommand(final ServerCommandEvent e) {
-        final CommandSender sender = e.getSender();
-        String performer = null;
-        final CommandSenderType type = CommandSenderType.getCommandSenderType(sender);
-        switch (type) {
-            case BLOCK:
-                performer = Utils.getBlockPerformer(((BlockCommandSender) sender).getBlock());
-                break;
-            case ENTITY:
-                performer = ((Entity) sender).getUniqueId().toString();
-        }
-        api.recordCommand(e.getCommand(), type.name(), performer);
+        try {
+            final CommandSender sender = e.getSender();
+            String performer = null;
+            final CommandSenderType type = CommandSenderType.getCommandSenderType(sender);
+            switch (type) {
+                case BLOCK:
+                    performer = Utils.getBlockPerformer(((BlockCommandSender) sender).getBlock());
+                    break;
+                case ENTITY:
+                    performer = ((Entity) sender).getUniqueId().toString();
+            }
+            api.recordCommand(e.getCommand(), type.name(), performer);
+        } catch (final NoClassDefFoundError ignored) { }
     }
 }
