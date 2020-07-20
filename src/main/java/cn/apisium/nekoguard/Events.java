@@ -5,15 +5,12 @@ import cn.apisium.nekoguard.utils.Utils;
 import org.bukkit.Material;
 import org.bukkit.block.*;
 import org.bukkit.command.*;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Snowman;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
-import org.bukkit.event.entity.EntityChangeBlockEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -26,8 +23,10 @@ import org.bukkit.inventory.ItemStack;
 public final class Events implements Listener {
     private final API api;
     private final Main main;
+    private final Messages messages;
     Events(final Main main) {
         this.api = main.getApi();
+        this.messages = main.getMessages();
         this.main = main;
     }
 
@@ -41,7 +40,7 @@ public final class Events implements Listener {
         if (main.inspecting.contains(e.getPlayer())) {
             final Block b = e.getBlock();
             e.setCancelled(true);
-            api.sendQueryBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            messages.sendQueryBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
         } else api.recordBlockPlace(e.getBlock(), e.getPlayer());
     }
 
@@ -54,19 +53,19 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockExplode(final BlockExplodeEvent e) {
         if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), "%" + e.getBlock().getType().getKey());
+        api.recordBlocksBreak(e.blockList(), "@" + e.getBlock().getType().getKey());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockSpread(final BlockSpreadEvent e) {
-        final String id = "%" + e.getBlock().getType().getKey();
+        final String id = "@" + e.getBlock().getType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         api.recordBlockPlace(e.getNewState(), id);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBurn(final BlockBurnEvent e) {
-        api.recordBlockBreak(e.getBlock(), "%" + Material.FIRE.getKey());
+        api.recordBlockBreak(e.getBlock(), "@" + Material.FIRE.getKey());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -81,7 +80,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockForm(final BlockFormEvent e) {
-        final String id = "%" + e.getNewState().getType().getKey();
+        final String id = "@" + e.getNewState().getType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         api.recordBlockPlace(e.getNewState(), id);
     }
@@ -114,8 +113,8 @@ public final class Events implements Listener {
             (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
             !main.inspecting.contains(p)) return;
         e.setCancelled(true);
-        if (b.getState() instanceof Container) api.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0, null);
-        else api.sendQueryBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0, null);
+        else messages.sendQueryBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -195,5 +194,22 @@ public final class Events implements Listener {
             }
             api.recordCommand(e.getCommand(), type.name(), performer);
         } catch (final NoClassDefFoundError ignored) { }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityDeath(final EntityDeathEvent e) {
+        final LivingEntity entity = e.getEntity();
+        if (!main.recordMonsterKilledWithoutCustomName && entity.getCustomName() == null &&
+            (entity instanceof Monster || entity instanceof Slime)) return;
+        final EntityDamageEvent cause = entity.getLastDamageCause();
+        final String killer = Utils.getKiller(entity),
+            reason = cause == null ? "" : cause.getCause().name();
+        if (e instanceof PlayerDeathEvent) {
+            final PlayerDeathEvent e2 = (PlayerDeathEvent) e;
+            api.recordPlayerDeath(killer, e2.getEntity(), reason,
+                e2.getKeepInventory() ? null : e2.getDrops(),
+                e2.getKeepLevel() ? 0 : e2.getDroppedExp()
+            );
+        } else api.recordDeath(killer, entity, reason);
     }
 }

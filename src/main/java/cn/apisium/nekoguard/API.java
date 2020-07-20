@@ -1,51 +1,49 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.*;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.TextComponent;
-import org.apache.commons.lang.ObjectUtils;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
-import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
-import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 
 public final class API {
     private final Database db;
     private final String chatRecords;
-    private final String killRecords;
+    private final String deathRecords;
     private final String blockRecords;
     private final String commandRecords;
     private final String containerRecords;
     private ArrayList<ItemActionRecord> itemActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
+    private final Main main;
 
-    API(final Database db, final String prefix, final Plugin plugin) {
-        this.db = db;
+    API(final String prefix, final Main plugin) {
+        this.db = plugin.getDatabase();
+        main = plugin;
         blockRecords = prefix + "Blocks";
         containerRecords = prefix + "Containers";
         chatRecords = prefix + "Chats";
         commandRecords = prefix + "Commands";
-        killRecords = prefix + "Kills";
+        deathRecords = prefix + "Deaths";
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -66,17 +64,9 @@ public final class API {
 
     }
 
-    private static Consumer<QueryResult> getCountConsumer(@NotNull final Consumer<Integer> onSuccess) {
-        return it -> {
-            final QueryResult.Series data = Utils.getFirstResult(it);
-            if (data == null) onSuccess.accept(0);
-            else onSuccess.accept(((Double) data.getValues().get(0).get(1)).intValue());
-        };
-    }
-
-    public void recordChat(@NotNull final String msg, @NotNull final String user) {
+    public void recordChat(@NotNull final String msg, @NotNull final String performer) {
         db.write(Point.measurement(chatRecords)
-            .tag("player", user)
+            .tag("player", performer)
             .addField("message", msg)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
@@ -98,6 +88,48 @@ public final class API {
         db.write(Point.measurement(commandRecords)
             .tag("type", performer)
             .addField("command", command)
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordDeath(@NotNull final String performer, @NotNull final Entity entity, @NotNull final String cause) {
+        final Location loc = entity.getLocation();
+        db.write(Point.measurement(deathRecords)
+            .tag("performer", performer)
+            .tag("cause", cause)
+            .tag("type", '@' + entity.getType().getKey().toString())
+            .tag("world", loc.getWorld().getName())
+            .addField("entity", NMSUtils.serializeEntity(entity))
+            .addField("x", loc.getBlockX())
+            .addField("y", loc.getBlockY())
+            .addField("z", loc.getBlockZ())
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+    public void recordPlayerDeath(@NotNull final String performer, @NotNull final Player player, @NotNull final String cause, @Nullable final List<ItemStack> drops, final int exp) {
+        final String str;
+        if (main.recordItemDropsOfPlayerDeath) {
+            final JsonObject json = new JsonObject();
+            if (drops != null && !drops.isEmpty()) {
+                final JsonArray arr = new JsonArray();
+                drops.forEach(it -> arr.add(NMSUtils.serializeItemStack(it)));
+                json.add("drops", arr);
+            }
+            if (exp > 0) json.addProperty("exp", exp);
+            str = json.size() == 0 ? "" : json.toString();
+        } else str = "";
+        final Location loc = player.getLocation();
+        db.write(Point.measurement(deathRecords)
+            .tag("performer", performer)
+            .tag("cause", cause)
+            .tag("type", player.getUniqueId().toString())
+            .tag("world", loc.getWorld().getName())
+            .addField("entity", str)
+            .addField("x", loc.getBlockX())
+            .addField("y", loc.getBlockY())
+            .addField("z", loc.getBlockZ())
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -165,13 +197,6 @@ public final class API {
             .from(db.database, blockRecords)
             .orderBy(desc());
     }
-    @NotNull
-    public Consumer<SelectQueryImpl> getBlockQueryFunction(@NotNull final String world, final int x, final int y, final int z) {
-        return it -> it.where(eq("world", world))
-            .and(eq("x", x))
-            .and(eq("y", y))
-            .and(eq("z", z));
-    }
 
     @NotNull
     public SelectQueryImpl queryBlockCount() {
@@ -184,38 +209,6 @@ public final class API {
     public SelectQueryImpl queryBlock(final int page) {
         final SelectQueryImpl query = queryBlock();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
-    }
-
-    public void sendQueryBlockMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final SelectQueryImpl q1 = queryBlockCount(), q2 = queryBlock(page);
-        if (fn != null) {
-            fn.accept(q1);
-            fn.accept(q2);
-        }
-        db.query(q1, getCountConsumer(all ->
-            db.query(q2, res -> {
-                final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
-                final SeriesMapper.Mapper mapper = Mappers.BLOCKS.parse(data);
-                sender.sendMessage(Constants.HEADER);
-                final long now = Instant.now().toEpochMilli();
-                try {
-                    for (final Object[] arr : mapper.all()) sender.sendMessage(
-                        Utils.getBlockActionComponent(arr[1].equals("1"), (String) arr[4],
-                            ((Double) arr[5]).intValue(), ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
-                        Utils.getPerformerName((String) arr[2]),
-                        Utils.formatTime((String) arr[3], now),
-                        Utils.getBlockComponent((String) arr[0])
-                    );
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                sender.sendMessage(Constants.makeFooter(page, all));
-            })
-        ));
-    }
-    public void sendQueryBlockMessage(@NotNull final CommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page) {
-        sendQueryBlockMessage(sender, page, getBlockQueryFunction(world, x, y, z));
     }
 
     @NotNull
@@ -236,34 +229,11 @@ public final class API {
         return query;
     }
 
-    public void sendQueryChatMessage(@NotNull final CommandSender sender, @Nullable final String player, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final SelectQueryImpl q1 = queryChatCount(player), q2 = queryChat(player, page);
-        if (fn != null) {
-            fn.accept(q1);
-            fn.accept(q2);
-        }
-        db.query(q1, getCountConsumer(all -> db.query(q2, res -> {
-            final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null) return;
-            final SeriesMapper.Mapper mapper = Mappers.CHATS.parse(data);
-            sender.sendMessage(Constants.HEADER);
-            final long now = Instant.now().toEpochMilli();
-            final String username = player == null ? null : Utils.getPlayerName(player);
-            try {
-                for (final Object[] arr : mapper.all()) sender.sendMessage(Utils.formatTime((String) arr[0], now),
-                    new TextComponent(ObjectUtils.defaultIfNull(username, Utils.getPlayerName((String) arr[1])) +
-                    "¡ì7: " + arr[2]));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            sender.sendMessage(Constants.makeFooter(page, all));
-        })));
-    }
-
     public void recordItemAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final Inventory source, @NotNull final Inventory target) {
         recordItemAction(is, performer, Utils.getInventoryId(source), Utils.getInventoryId(target));
     }
     public void recordItemAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
+        if (source.isEmpty() && target.isEmpty()) return;
         itemActionList.add(new ItemActionRecord(is, performer, source, target, curTime++));
     }
 
@@ -294,39 +264,6 @@ public final class API {
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 
-    public void sendContainerActionsMessage(@NotNull final CommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final SelectQueryImpl q1 = queryContainerActionsCount(world, x, y, z), q2 = queryContainerActions(world, x, y, z, page);
-        if (fn != null) {
-            fn.accept(q1);
-            fn.accept(q2);
-        }
-        db.query(q1, getCountConsumer(all ->
-            db.query(q2, res -> {
-                final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
-                final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
-                sender.sendMessage(Constants.HEADER);
-                final long now = Instant.now().toEpochMilli();
-                final String id = Utils.getBlockPerformer(world, x, y, z);
-                try {
-                    for (final Object[] arr : mapper.all()) {
-                        final TextComponent t = new TextComponent((String) arr[2]);
-                        t.setColor(ChatColor.GRAY);
-                        sender.sendMessage(
-                            Utils.getContainerActionComponent(!id.equals(arr[2]), (String) arr[1], (String) arr[2], (String) arr[3]),
-                            Utils.getContainerPerformerName((String) arr[1]),
-                            Utils.formatTime((String) arr[0], now),
-                            Utils.getItemStackDetails(NMSUtils.deserializeItemStack((String) arr[4]))
-                        );
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                sender.sendMessage(Constants.makeFooter(page, all));
-            })
-        ));
-    }
-
     @NotNull
     public SelectQueryImpl queryCommand(@Nullable final String type, final int page) {
         final SelectQueryImpl query = select()
@@ -345,35 +282,23 @@ public final class API {
         return query;
     }
 
-    @SuppressWarnings("deprecation")
-    public void sendQueryCommandMessage(@NotNull final CommandSender sender, @Nullable String type, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final String type1;
-        if (type != null && !CommandSenderType.getValueList().contains(type)) type1 = Bukkit.getOfflinePlayer(type).getUniqueId().toString();
-        else type1 = type;
-        final SelectQueryImpl q1 = queryCommandCount(type1), q2 = queryCommand(type1, page);
-        if (fn != null) {
-            fn.accept(q1);
-            fn.accept(q2);
-        }
-        db.query(q1, getCountConsumer(all -> db.query(q2, res -> {
-            final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null) return;
-            final SeriesMapper.Mapper mapper = Mappers.COMMANDS.parse(data);
-            sender.sendMessage(Constants.HEADER);
-            final long now = Instant.now().toEpochMilli();
-            try {
-                for (final Object[] arr : mapper.all()) {
-                    final TextComponent t = new TextComponent(": " + arr[3]);
-                    t.setColor(ChatColor.GRAY);
-                    sender.sendMessage(Utils.formatTime((String) arr[0], now),
-                        Utils.getPlayerCommandNameComponent((String) arr[1], (String) arr[2]),
-                        t
-                    );
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            sender.sendMessage(Constants.makeFooter(page, all));
-        })));
+    @NotNull
+    public SelectQueryImpl queryDeath() {
+        return select()
+            .from(db.database, deathRecords)
+            .orderBy(desc());
+    }
+
+    @NotNull
+    public SelectQueryImpl queryDeathCount() {
+        return select()
+            .countAll()
+            .from(db.database, deathRecords);
+    }
+
+    @NotNull
+    public SelectQueryImpl queryDeath(final int page) {
+        final SelectQueryImpl query = queryDeath();
+        return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 }

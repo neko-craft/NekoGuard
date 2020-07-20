@@ -1,7 +1,7 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.changes.BlockChangeList;
-import cn.apisium.nekoguard.utils.Mappers;
+import cn.apisium.nekoguard.mappers.Mappers;
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import cn.apisium.nekoguard.utils.Utils;
 import co.aikar.commands.BaseCommand;
@@ -13,7 +13,9 @@ import joptsimple.ArgumentAcceptingOptionSpec;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpecBuilder;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.influxdb.dto.QueryResult;
@@ -30,6 +32,7 @@ import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 public final class Commands extends BaseCommand {
     private final API api;
     private final Main main;
+    private final Messages messages;
     private final static OptionParser LOOKUP_CHATS = new OptionParser(),
             LOOKUP_COMMANDS = new OptionParser();
 
@@ -43,6 +46,7 @@ public final class Commands extends BaseCommand {
 
     Commands(final Main main) {
         this.api = main.getApi();
+        this.messages = main.getMessages();
         this.main = main;
     }
 
@@ -60,7 +64,7 @@ public final class Commands extends BaseCommand {
         public void lookupChats(final CommandSender sender, final String[] args) {
             final OptionSet cmd = LOOKUP_CHATS.parse(args);
             final Object time = cmd.valueOf("time");
-            api.sendQueryChatMessage(sender, (String) cmd.valueOf("player"), 0,
+            messages.sendQueryChatMessage(sender, (String) cmd.valueOf("player"), 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause((String) time)));
         }
 
@@ -69,14 +73,33 @@ public final class Commands extends BaseCommand {
         public void lookupCommands(final CommandSender sender, final String[] args) {
             final OptionSet cmd = LOOKUP_CHATS.parse(args);
             final Object time = cmd.valueOf("time");
-            api.sendQueryCommandMessage(sender, (String) cmd.valueOf("performer"), 0,
+            messages.sendQueryCommandMessage(sender, (String) cmd.valueOf("performer"), 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause((String) time)));
         }
 
         @Subcommand("block")
         @CommandPermission("nekoguard.lookup.block")
         public void lookupBlocks(final CommandSender sender, final String[] args) {
-            api.sendQueryBlockMessage(sender, 0, it -> queryActions(it, sender, args, false));
+            final OptionParser parser = getParser(sender, false);
+            parser.acceptsAll(Arrays.asList("b", "block")).withOptionalArg().ofType(String.class);
+            final OptionSet result = parser.parse(args);
+            messages.sendQueryBlockMessage(sender, 0, it -> {
+                if (result.has("block")) it.where(
+                    regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
+                processQuery(result, it, sender, false);
+            });
+        }
+
+        @Subcommand("death")
+        @CommandPermission("nekoguard.lookup.death")
+        public void lookupDeaths(final CommandSender sender, final String[] args) {
+            final OptionParser parser = getParser(sender, false);
+            parser.acceptsAll(Arrays.asList("e", "entity")).withOptionalArg().ofType(String.class);
+            final OptionSet result = parser.parse(args);
+            messages.sendQueryDeathMessage(sender, 0, it -> {
+                if (result.has("entity")) it.where(eq("type", "@" + result.valueOf("entity")));
+                processQuery(result, it, sender, false);
+            });
         }
     }
 
@@ -87,7 +110,9 @@ public final class Commands extends BaseCommand {
         public void rollbackBlocks(final CommandSender sender, final String[] args) {
             try {
                 final SelectQueryImpl query = api.queryBlock().orderBy(asc());
-                queryActions(query, sender, args, true);
+                final OptionParser parser = getParser(sender, true);
+                final OptionSet result = parser.parse(args);
+                processQuery(result, query, sender, true);
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
@@ -104,13 +129,12 @@ public final class Commands extends BaseCommand {
         return Collections.emptyList();
     }
 
-    private void queryActions(final SelectQueryImpl q, final CommandSender sender, final String[] args, final boolean isRollback) {
+    private OptionParser getParser(final CommandSender sender, final boolean isRollback) {
         final OptionParser parser = new OptionParser();
         parser.acceptsAll(Arrays.asList("r", "radius")).withRequiredArg().ofType(Integer.class).defaultsTo(5);
         final OptionSpecBuilder b = parser.acceptsAll(Arrays.asList("t", "time"));
         (isRollback ? b.withRequiredArg() : b.withOptionalArg()).ofType(String.class);
         parser.acceptsAll(Arrays.asList("p", "performer")).withOptionalArg().ofType(String.class);
-        parser.acceptsAll(Arrays.asList("b", "block")).withOptionalArg().ofType(String.class);
         parser.acceptsAll(Arrays.asList("g", "global")).withOptionalArg();
 
         final ArgumentAcceptingOptionSpec<Integer> x = parser.accepts("x").withRequiredArg().ofType(Integer.class),
@@ -124,7 +148,11 @@ public final class Commands extends BaseCommand {
             z.defaultsTo(p.getBlockZ());
             world.defaultsTo(p.getWorld().getName());
         }
-        final OptionSet cmd = parser.parse(args);
+        return parser;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void processQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
@@ -134,8 +162,18 @@ public final class Commands extends BaseCommand {
             }
             query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
         }
-        if (cmd.has("performer")) query.and(eq("performer", cmd.valueOf("performer")));
-        if (cmd.has("block")) query.and(regex("data", "/^(minecraft:)?" + cmd.valueOf("block") + "/"));
+        if (cmd.has("performer")) {
+            String performer = (String) cmd.valueOf("performer");
+            if (!performer.startsWith("#") && !performer.startsWith("@") && performer.length() != 36) {
+                final OfflinePlayer p = Bukkit.getOfflinePlayer(performer);
+                if (!p.hasPlayedBefore()) {
+                    sender.sendMessage(Constants.PLAYER_NOT_EXISTS);
+                    throw Constants.IGNORED_ERROR;
+                }
+                performer = p.getUniqueId().toString();
+            }
+            query.and(eq("performer", performer));
+        }
         if (!cmd.has("global")) {
             final Integer lx = (Integer) cmd.valueOf("x"),
                 ly = (Integer) cmd.valueOf("y"),

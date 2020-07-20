@@ -2,6 +2,7 @@ package cn.apisium.nekoguard.utils;
 
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.entity.Entity;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,9 +14,11 @@ public final class NMSUtils {
     private NMSUtils() {}
     private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound");
     private final static Class<?> tileEntityClass = ReflectionUtil.getNMSClass("TileEntity");
+    private final static Class<?> nmsEntityClass = ReflectionUtil.getNMSClass("Entity");
     private static final Class<?> nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser");
     private static final Class<?> nmsItemStackClass = ReflectionUtil.getNMSClass("ItemStack");
     private static final Class<?> nmsIBlockDataClass = ReflectionUtil.getNMSClass("IBlockData");
+    private static final Class<?> craftCraftEntityClass = ReflectionUtil.getOBCClass("entity.CraftEntity");
     private final static Class<?> craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState");
     private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
     private static final Class<?> craftBlockDataClass = ReflectionUtil.getOBCClass("block.data.CraftBlockData");
@@ -24,6 +27,9 @@ public final class NMSUtils {
     private final static Method tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass);
     private final static Method tileEntityLoad = ReflectionUtil.getMethod(tileEntityClass, "load", nmsIBlockDataClass, nbtTagCompoundClass);
     private static final Method saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass);
+    private final static Method craftEntityGetHandle = ReflectionUtil.getMethod(craftCraftEntityClass, "getHandle");
+    private final static Method entitySave = ReflectionUtil.getMethod(nmsEntityClass, "save", nbtTagCompoundClass);
+    private final static Method entityLoad = ReflectionUtil.getMethod(nmsEntityClass, "load", nbtTagCompoundClass);
     private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
     private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
     private static final Method craftBlockDataGetState = ReflectionUtil.getMethod(craftBlockDataClass, "getState");
@@ -45,17 +51,39 @@ public final class NMSUtils {
     @NotNull
     public static String serializeItemStack(@NotNull final ItemStack itemStack) {
         try {
+            System.out.println(nmsItemStackClass.isInstance(getNMSItemStack(itemStack)));
             return saveNmsItemStack.invoke(getNMSItemStack(itemStack), nbtTagCompoundClass.newInstance()).toString();
         } catch (final Exception t) {
             Utils.throwSneaky(t);
             throw new RuntimeException();
         }
     }
+    @SuppressWarnings("unused")
     @NotNull
     public static ItemStack deserializeItemStack(@NotNull final String data) {
         try {
             return (ItemStack) itemStackAsCraftMirror.invoke(null,
                 itemStackFromCompound.invoke(null, nbtParserParse.invoke(null, data)));
+        } catch (final Exception t) {
+            Utils.throwSneaky(t);
+            throw new RuntimeException();
+        }
+    }
+
+    @NotNull
+    public static String serializeEntity(@NotNull final Entity entity) {
+        try {
+            return entitySave.invoke(craftEntityGetHandle.invoke(entity), nbtTagCompoundClass.newInstance()).toString();
+        } catch (final Exception t) {
+            Utils.throwSneaky(t);
+            throw new RuntimeException();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static void loadEntityData(@NotNull final Entity entity, @NotNull final String data) {
+        try {
+            entityLoad.invoke(craftEntityGetHandle.invoke(entity), nbtParserParse.invoke(null, data));
         } catch (final Exception t) {
             Utils.throwSneaky(t);
             throw new RuntimeException();
@@ -77,10 +105,9 @@ public final class NMSUtils {
         }
     }
 
-    public static void patchTileStateData(@NotNull final Block block, @NotNull final String data) {
+    public static void loadTileStateData(@NotNull final Block block, @NotNull final String data) {
         final BlockState state = block.getState();
         if (!craftBlockEntityStateClass.isInstance(state)) return;
-        System.out.println(data);
         try {
             final Object tile = getTileEntity.invoke(state);
             tileEntityLoad.invoke(tile, craftBlockDataGetState.invoke(block.getBlockData()),

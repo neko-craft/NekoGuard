@@ -1,8 +1,8 @@
 package cn.apisium.nekoguard.changes;
 
 import cn.apisium.nekoguard.Main;
+import cn.apisium.nekoguard.mappers.SeriesMapper;
 import cn.apisium.nekoguard.utils.Pair;
-import cn.apisium.nekoguard.utils.SeriesMapper;
 import cn.apisium.nekoguard.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;

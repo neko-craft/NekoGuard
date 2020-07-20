@@ -3,3 +3,6 @@ username: ''
 password: ''
 database: 'NekoGuard'
 measurementPrefix: ''
+
+recordMonsterKilledWithoutCustomName: false
+recordItemDropsOfPlayerDeath: false

@@ -23,7 +23,10 @@ import java.util.*;
 public final class Main extends JavaPlugin {
     private Database db;
     private API api;
+    private Messages messages;
     private static Main INSTANCE;
+    protected boolean recordMonsterKilledWithoutCustomName = false;
+    protected boolean recordItemDropsOfPlayerDeath = false;
     protected final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
 
     { INSTANCE = this; }
@@ -38,13 +41,16 @@ public final class Main extends JavaPlugin {
             setEnabled(false);
             return;
         }
+        recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
+        recordItemDropsOfPlayerDeath = getConfig().getBoolean("recordItemDropsOfPlayerDeath", false);
         db = new Database(
                 Objects.requireNonNull(getConfig().getString("database")),
                 url,
                 getConfig().getString("username"),
                 getConfig().getString("password", "")
         );
-        api = new API(db, Objects.requireNonNull(getConfig().getString("measurementPrefix")), this);
+        api = new API(Objects.requireNonNull(getConfig().getString("measurementPrefix")), this);
+        messages = new Messages(api, db);
         getServer().getPluginManager().registerEvents(new Events(this), this);
         final PaperCommandManager manager = new PaperCommandManager(this);
         manager.enableUnstableAPI("help");
@@ -58,6 +64,8 @@ public final class Main extends JavaPlugin {
 
     @SuppressWarnings("unused")
     public Database getDatabase() { return db; }
+
+    public Messages getMessages() { return messages; }
 
     public API getApi() { return api; }
 

@@ -1,4 +1,4 @@
-package cn.apisium.nekoguard.utils;
+package cn.apisium.nekoguard.mappers;
 
 import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
