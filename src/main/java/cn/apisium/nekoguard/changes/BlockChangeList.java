@@ -12,20 +12,25 @@ import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
-public final class BlockChangeList extends ChangeList {
+public final class BlockChangeList extends ChangeWithPositionList {
+    static {
+        world = 4;
+        x = 5;
+        z = 7;
+    }
     public BlockChangeList(SeriesMapper.Mapper mapper) {
-        for (final Object[] arr : mapper.allArray())
-            addAction(arr, (String) arr[4], ((Double) arr[5]).intValue(), ((Double) arr[7]).intValue());
+        super(mapper);
     }
 
     @SuppressWarnings("ConstantConditions")
     @Override
-    public void doChange(@NotNull final CommandSender sender, @Nullable final Runnable callback) {
-        final HashMap<Block, Pair<String, Boolean>> map = new HashMap<>();
+    public void doChange(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback) {
+        final LinkedHashMap<Block, Pair<String, Boolean>> map = new LinkedHashMap<>();
         actionList.forEach((k, v) -> {
             final String[] arr = k.split("\\|", 3);
             final Chunk ch = Bukkit.getWorld(arr[0]).getChunkAt(Integer.parseInt(arr[1]), Integer.parseInt(arr[2]));
@@ -46,13 +51,13 @@ public final class BlockChangeList extends ChangeList {
             }
             if (!iterator.hasNext()) {
                 it.cancel();
-                if (callback != null) callback.run();
+                if (callback != null) callback.accept(this);
             }
         }, 0, 2);
     }
 
     @Override
-    public void undo() {
+    public void undo(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback) {
 
     }
 }

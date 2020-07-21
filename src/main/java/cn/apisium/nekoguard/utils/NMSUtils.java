@@ -51,22 +51,20 @@ public final class NMSUtils {
     @NotNull
     public static String serializeItemStack(@NotNull final ItemStack itemStack) {
         try {
-            System.out.println(nmsItemStackClass.isInstance(getNMSItemStack(itemStack)));
             return saveNmsItemStack.invoke(getNMSItemStack(itemStack), nbtTagCompoundClass.newInstance()).toString();
         } catch (final Exception t) {
             Utils.throwSneaky(t);
             throw new RuntimeException();
         }
     }
-    @SuppressWarnings("unused")
-    @NotNull
+
+    @Nullable
     public static ItemStack deserializeItemStack(@NotNull final String data) {
         try {
             return (ItemStack) itemStackAsCraftMirror.invoke(null,
                 itemStackFromCompound.invoke(null, nbtParserParse.invoke(null, data)));
-        } catch (final Exception t) {
-            Utils.throwSneaky(t);
-            throw new RuntimeException();
+        } catch (final Exception ignored) {
+            return null;
         }
     }
 
@@ -80,7 +78,6 @@ public final class NMSUtils {
         }
     }
 
-    @SuppressWarnings("unused")
     public static void loadEntityData(@NotNull final Entity entity, @NotNull final String data) {
         try {
             entityLoad.invoke(craftEntityGetHandle.invoke(entity), nbtParserParse.invoke(null, data));

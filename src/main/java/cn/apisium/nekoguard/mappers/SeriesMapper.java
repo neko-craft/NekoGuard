@@ -30,8 +30,10 @@ public final class SeriesMapper {
     public final class Mapper {
         private final QueryResult.Series data;
         private final int[] map2;
+        public final int count;
         protected Mapper(@NotNull final QueryResult.Series data) {
             this.data = data;
+            count = data.getValues().size();
             map2 = new int[size];
             final List<String> list = data.getColumns();
             int i = list.size();
@@ -52,7 +54,7 @@ public final class SeriesMapper {
 
         @NotNull
         public Object[][] allArray() {
-            int i = data.getValues().size();
+            int i = count;
             final Object[][] arr = new Object[i][size];
             while (i-- != 0) arr[i] = get(i);
             return arr;

@@ -22,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 
@@ -32,9 +33,10 @@ public final class API {
     private final String blockRecords;
     private final String commandRecords;
     private final String containerRecords;
-    private ArrayList<ItemActionRecord> itemActionList = new ArrayList<>();
+    private ArrayList<ContainerAction> itemActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
     private final Main main;
+    private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
 
     API(final String prefix, final Main plugin) {
         this.db = plugin.getDatabase();
@@ -47,7 +49,7 @@ public final class API {
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            final ArrayList<ItemActionRecord> list = itemActionList;
+            final ArrayList<ContainerAction> list = itemActionList;
             if (list.isEmpty()) return;
             itemActionList = new ArrayList<>();
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> list.forEach(it ->
@@ -100,7 +102,7 @@ public final class API {
             .tag("cause", cause)
             .tag("type", '@' + entity.getType().getKey().toString())
             .tag("world", loc.getWorld().getName())
-            .addField("entity", NMSUtils.serializeEntity(entity))
+            .addField("entity", ZERO_HEALTH.matcher(NMSUtils.serializeEntity(entity)).replaceAll(""))
             .addField("x", loc.getBlockX())
             .addField("y", loc.getBlockY())
             .addField("z", loc.getBlockZ())
@@ -229,22 +231,29 @@ public final class API {
         return query;
     }
 
-    public void recordItemAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final Inventory source, @NotNull final Inventory target) {
-        recordItemAction(is, performer, Utils.getInventoryId(source), Utils.getInventoryId(target));
+    public void recordContainerAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final Inventory source, @NotNull final Inventory target) {
+        recordContainerAction(is, performer, Utils.getInventoryId(source), Utils.getInventoryId(target));
     }
-    public void recordItemAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
+    public void recordContainerAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
         if (source.isEmpty() && target.isEmpty()) return;
-        itemActionList.add(new ItemActionRecord(is, performer, source, target, curTime++));
+        itemActionList.add(new ContainerAction(is, performer, source, target, curTime++));
+    }
+
+    @NotNull
+    public SelectQueryImpl queryContainerActions() {
+        return select()
+            .from(db.database, containerRecords);
     }
 
     @NotNull
     public WhereQueryImpl<?> queryContainerActions(@NotNull final String world, final int x, final int y, final int z) {
         final String id = Utils.getBlockPerformer(world, x, y, z);
-        return select()
+        final WhereQueryImpl<?> query = select()
             .from(db.database, containerRecords)
             .orderBy(desc())
-            .where(eq("source", id))
-            .or(eq("target", id));
+            .where();
+        query.andNested().and(eq("target", id)).or(eq("source", id));
+        return query;
     }
 
     @NotNull

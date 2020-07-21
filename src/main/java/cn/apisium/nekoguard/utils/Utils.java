@@ -9,10 +9,13 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.block.TileState;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.entity.EntityDamageByBlockEvent;
@@ -125,13 +128,16 @@ public final class Utils {
     }
 
     @NotNull
-    public static BaseComponent getPerformerComponent(@NotNull final String performer) {
+    public static BaseComponent getPerformerComponent(@Nullable final String performer) {
         return getPerformerComponent(performer, true);
     }
     @NotNull
-    public static BaseComponent getPerformerComponent(@NotNull final String performer, final boolean pad) {
+    public static BaseComponent getPerformerComponent(@Nullable final String performer, final boolean pad) {
         final String s1, s2;
-        if (performer.startsWith("@")) {
+        if (performer == null || performer.isEmpty()) {
+            s1 = "";
+            s2 = "Ξ΄Φª";
+        } else if (performer.startsWith("@")) {
             s1 = "ΚµΜε:";
             s2 = getEntityName(performer.substring(1));
         } else if (performer.startsWith("#")) {
@@ -346,11 +352,40 @@ public final class Utils {
         return "";
     }
 
+    @NotNull
     public static Consumer<QueryResult> getCountConsumer(@NotNull final Consumer<Integer> onSuccess) {
         return it -> {
             final QueryResult.Series data = Utils.getFirstResult(it);
             if (data == null) onSuccess.accept(0);
             else onSuccess.accept(((Double) data.getValues().get(0).get(1)).intValue());
         };
+    }
+
+    @NotNull
+    public static String getPerformerQueryName(@NotNull final String performer, @NotNull final CommandSender sender) {
+        if (!performer.startsWith("#") && !performer.startsWith("@") && performer.length() != 36) {
+            final OfflinePlayer p = Bukkit.getOfflinePlayer(performer);
+            if (!p.hasPlayedBefore()) {
+                sender.sendMessage(Constants.PLAYER_NOT_EXISTS);
+                throw Constants.IGNORED_ERROR;
+            }
+            return p.getUniqueId().toString();
+        } else return performer;
+    }
+
+    @Nullable
+    public static Inventory getInventory(@Nullable final String str) {
+        if (str == null || str.isEmpty()) return null;
+        else if (str.startsWith("#")) {
+            final String[] arr = str.substring(1).split("\\|", 4);
+            final World world = Bukkit.getWorld(arr[0]);
+            if (world == null) return null;
+            final BlockState state = world.getBlockAt(Integer.parseInt(arr[1]), Integer.parseInt(arr[2]),
+                Integer.parseInt(arr[3])).getState();
+            return state instanceof InventoryHolder ? ((InventoryHolder) state).getInventory() : null;
+        } else {
+            final Entity entity = Bukkit.getEntity(UUID.fromString(str));
+            return entity instanceof InventoryHolder ? ((InventoryHolder) entity).getInventory() : null;
+        }
     }
 }

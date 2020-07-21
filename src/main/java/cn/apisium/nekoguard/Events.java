@@ -123,7 +123,7 @@ public final class Events implements Listener {
             !Constants.isNeedToRecordContainerAction(e.getSource().getType()) ||
             !Constants.isNeedToRecordContainerAction(e.getDestination().getType())) return;
         final Inventory init = e.getInitiator();
-        api.recordItemAction(e.getItem().clone(), "#" + init.getType().name(), e.getSource(), e.getDestination());
+        api.recordContainerAction(e.getItem().clone(), "#" + init.getType().name(), e.getSource(), e.getDestination());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -141,10 +141,10 @@ public final class Events implements Listener {
             final String id = e.getWhoClicked().getUniqueId().toString();
             if (e.getClickedInventory() == e.getView().getTopInventory()) {
                 if (Constants.isNeedToRecordContainerAction(inv.getType()))
-                    api.recordItemAction(is, id, Utils.getInventoryId(inv), id);
+                    api.recordContainerAction(is, id, Utils.getInventoryId(inv), id);
             } else {
                 if (Constants.isNeedToRecordContainerAction(inv.getType()))
-                    api.recordItemAction(is, id, id, Utils.getInventoryId(inv));
+                    api.recordContainerAction(is, id, id, Utils.getInventoryId(inv));
             }
             return;
         }
@@ -152,21 +152,21 @@ public final class Events implements Listener {
         switch (e.getAction()) {
             case SWAP_WITH_CURSOR:
                 final ItemStack is2 = e.getView().getCursor();
-                if (is2 != null && !is2.getType().isAir()) api.recordItemAction(is2.clone(), e.getWhoClicked().getUniqueId().toString(),
+                if (is2 != null && !is2.getType().isAir()) api.recordContainerAction(is2.clone(), e.getWhoClicked().getUniqueId().toString(),
                     "", Utils.getInventoryId(inv));
             case PICKUP_ALL:
             case PICKUP_HALF:
             case PICKUP_ONE:
             case PICKUP_SOME:
             case COLLECT_TO_CURSOR:
-                api.recordItemAction(is, e.getWhoClicked().getUniqueId().toString(),
+                api.recordContainerAction(is, e.getWhoClicked().getUniqueId().toString(),
                     Utils.getInventoryId(inv), "");
                 break;
             case PLACE_SOME:
             case PLACE_ALL:
             case PLACE_ONE:
             case CLONE_STACK:
-                api.recordItemAction(is, e.getWhoClicked().getUniqueId().toString(),
+                api.recordContainerAction(is, e.getWhoClicked().getUniqueId().toString(),
                     "", Utils.getInventoryId(inv));
                 break;
         }
