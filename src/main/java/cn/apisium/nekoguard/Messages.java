@@ -25,6 +25,7 @@ import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.eq;
 public final class Messages {
     final API api;
     final Database db;
+    private final static TextComponent SPACE = new TextComponent("  ");
 
     public Messages(final API api, final Database db) {
         this.api = api;
@@ -129,12 +130,14 @@ public final class Messages {
         })));
     }
 
-    public void sendContainerActionsMessage(@NotNull final CommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-        final SelectQueryImpl q1 = api.queryContainerActionsCount(world, x, y, z), q2 = api.queryContainerActions(world, x, y, z, page);
+    public void sendContainerActionsMessage(@NotNull final CommandSender sender, final String world, final int x, final int y, final int z, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        final SelectQueryImpl q1 = api.queryContainerActionsCount(), q2 = api.queryContainerActions(page);
         if (fn != null) {
             fn.accept(q1);
             fn.accept(q2);
         }
+        API.processSingleContainerBlockQuery(q1, world, x, y, z);
+        API.processSingleContainerBlockQuery(q2, world, x, y, z);
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
@@ -142,16 +145,19 @@ public final class Messages {
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
-                final String id = Utils.getBlockPerformer(world, x, y, z);
                 try {
                     for (final Object[] arr : mapper.all()) {
                         final TextComponent t = new TextComponent((String) arr[2]);
                         t.setColor(ChatColor.GRAY);
+                        final boolean isAdd = Utils.isAddContainerAction(arr, world, x, y, z);
                         sender.sendMessage(
-                            Utils.getContainerActionComponent(!id.equals(arr[2]), (String) arr[1], (String) arr[2], (String) arr[3]),
-                            Utils.getContainerPerformerName((String) arr[1]),
-                            Utils.getTimeComponent((String) arr[0], now),
-                            Utils.getItemStackDetails((String) arr[4])
+                            Utils.getContainerActionComponent(isAdd, world, x, y, z),
+                            Utils.getItemStackDetails((String) arr[1]),
+                            SPACE,
+                            isAdd
+                                ? Utils.getContainerPerformerName((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6])
+                                : Utils.getContainerPerformerName((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]),
+                            Utils.getTimeComponent((String) arr[0], now)
                         );
                     }
                 } catch (Exception e) {
@@ -161,6 +167,38 @@ public final class Messages {
             })
         ));
     }
+
+//    public void sendContainerActionsMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+//        final SelectQueryImpl q1 = api.queryContainerActionsCount(), q2 = api.queryContainerActions(page);
+//        if (fn != null) {
+//            fn.accept(q1);
+//            fn.accept(q2);
+//        }
+//        db.query(q1, Utils.getCountConsumer(all ->
+//            db.query(q2, res -> {
+//                final QueryResult.Series data = Utils.getFirstResult(res);
+//                if (data == null) return;
+//                final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
+//                sender.sendMessage(Constants.HEADER);
+//                final long now = Instant.now().toEpochMilli();
+//                try {
+//                    for (final Object[] arr : mapper.all()) {
+//                        final TextComponent t = new TextComponent((String) arr[2]);
+//                        t.setColor(ChatColor.GRAY);
+//                        sender.sendMessage(
+//                            Utils.getContainerActionComponent(!id.equals(arr[2]), (String) arr[1], (String) arr[2], (String) arr[3]),
+//                            Utils.getContainerPerformerName((String) arr[1]),
+//                            Utils.getTimeComponent((String) arr[0], now),
+//                            Utils.getItemStackDetails((String) arr[4])
+//                        );
+//                    }
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//                sender.sendMessage(Constants.makeFooter(page, all));
+//            })
+//        ));
+//    }
 
     public void sendQueryDeathMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
         final SelectQueryImpl q1 = api.queryDeathCount(), q2 = api.queryDeath(page);

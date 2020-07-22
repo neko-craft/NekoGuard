@@ -33,7 +33,7 @@ public final class API {
     private final String blockRecords;
     private final String commandRecords;
     private final String containerRecords;
-    private ArrayList<ContainerAction> itemActionList = new ArrayList<>();
+    private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
     private final Main main;
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
@@ -49,19 +49,43 @@ public final class API {
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            final ArrayList<ContainerAction> list = itemActionList;
+            final ArrayList<ContainerAction> list = containerActionList;
             if (list.isEmpty()) return;
-            itemActionList = new ArrayList<>();
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> list.forEach(it ->
-                db.write(Point.measurement(containerRecords)
-                    .tag("performer", it.performer)
+            containerActionList = new ArrayList<>();
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> list.forEach(it -> {
+                final Point.Builder builder = Point.measurement(containerRecords)
                     .addField("item", NMSUtils.serializeItemStack(it.item))
-                    .addField("source", it.source)
-                    .addField("target", it.target)
-                    .time(it.time, TimeUnit.NANOSECONDS)
-                    .build())
-                )
-            );
+                    .time(it.time, TimeUnit.NANOSECONDS);
+                if (it.sourceWorld == null) {
+                    if (it.sourceEntity != null) builder
+                        .tag("se", it.sourceEntity)
+                        .tag("sw", "")
+                        .addField("sx", (Number) null)
+                        .addField("sy", (Number) null)
+                        .addField("sz", (Number) null);
+                } else builder
+                    .tag("se", "")
+                    .tag("sw", it.sourceWorld)
+                    .addField("sx", it.sourceX)
+                    .addField("sy", it.sourceY)
+                    .addField("sz", it.sourceZ);
+                if (it.targetWorld == null) {
+                    if (it.targetEntity != null) builder
+                        .tag("te", it.targetEntity)
+                        .tag("tw", "")
+                        .addField("tx", (Number) null)
+                        .addField("ty", (Number) null)
+                        .addField("tz", (Number) null);
+                } else {
+                    builder
+                        .tag("te", "")
+                        .tag("tw", it.targetWorld)
+                        .addField("tx", it.targetX)
+                        .addField("ty", it.targetY)
+                        .addField("tz", it.targetZ);
+                }
+                db.write(builder.build());
+            }));
         }, 0, 1);
 
     }
@@ -231,45 +255,43 @@ public final class API {
         return query;
     }
 
-    public void recordContainerAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final Inventory source, @NotNull final Inventory target) {
-        recordContainerAction(is, performer, Utils.getInventoryId(source), Utils.getInventoryId(target));
+    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target) {
+        if (source == null && target == null) return;
+        final ContainerAction action = new ContainerAction(is, source, target, curTime);
+        if (action.sourceEntity == null && action.sourceWorld == null && action.targetEntity == null &&
+            action.targetWorld == null) return;
+        curTime++;
+        containerActionList.add(action);
     }
-    public void recordContainerAction(@NotNull final ItemStack is, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
-        if (source.isEmpty() && target.isEmpty()) return;
-        itemActionList.add(new ContainerAction(is, performer, source, target, curTime++));
+    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final String source, @Nullable final String target) {
+        if (source == null && target == null) return;
+        containerActionList.add(new ContainerAction(is, source, target, curTime++));
+    }
+    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final String target) {
+        if (source == null && target == null) return;
+        containerActionList.add(new ContainerAction(is, source, target, curTime++));
+    }
+    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final String source, @Nullable final Inventory target) {
+        if (source == null && target == null) return;
+        containerActionList.add(new ContainerAction(is, source, target, curTime++));
     }
 
     @NotNull
     public SelectQueryImpl queryContainerActions() {
         return select()
-            .from(db.database, containerRecords);
-    }
-
-    @NotNull
-    public WhereQueryImpl<?> queryContainerActions(@NotNull final String world, final int x, final int y, final int z) {
-        final String id = Utils.getBlockPerformer(world, x, y, z);
-        final WhereQueryImpl<?> query = select()
             .from(db.database, containerRecords)
-            .orderBy(desc())
-            .where();
-        query.andNested().and(eq("target", id)).or(eq("source", id));
-        return query;
+            .orderBy(desc());
     }
 
     @NotNull
-    public SelectQueryImpl queryContainerActionsCount(@NotNull final String world, final int x, final int y, final int z) {
-        final String id = Utils.getBlockPerformer(world, x, y, z);
-        final SelectQueryImpl query = select()
+    public SelectQueryImpl queryContainerActionsCount() {
+        return select()
             .countAll()
             .from(db.database, containerRecords);
-        query
-                .where(eq("source", id))
-                .or(eq("target", id));
-        return query;
     }
     @NotNull
-    public SelectQueryImpl queryContainerActions(@NotNull final String world, final int x, final int y, final int z, final int page) {
-        final WhereQueryImpl<?> query = queryContainerActions(world, x, y, z);
+    public SelectQueryImpl queryContainerActions(final int page) {
+        final SelectQueryImpl query = queryContainerActions();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 
@@ -309,5 +331,11 @@ public final class API {
     public SelectQueryImpl queryDeath(final int page) {
         final SelectQueryImpl query = queryDeath();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
+    }
+
+    public static void processSingleContainerBlockQuery(@NotNull final SelectQueryImpl query, @NotNull final String world, final int x, final int y, final int z) {
+        query.where()
+            .andNested().and(eq("sw", world)).and(eq("sx", x)).and(eq("sy", y)).and(eq("sz", z)).close()
+            .orNested().and(eq("tw", world)).and(eq("tx", x)).and(eq("ty", y)).and(eq("tz", z)).close();
     }
 }

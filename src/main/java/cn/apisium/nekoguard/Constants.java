@@ -13,8 +13,10 @@ public final class Constants {
     public static final String HEADER = "§b§m                     §r §e[NekoGuard] §b§m                     ";
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
     public static final String TP_MESSAGE = "§a点击立即传送到: §f";
+    public static final TextComponent UNKNOWN = new TextComponent("未知");
 
     static {
+        UNKNOWN.setColor(ChatColor.GRAY);
         try {
             Class.forName("com.destroystokyo.paper.entity.Pathfinder");
             IS_PAPER = true;

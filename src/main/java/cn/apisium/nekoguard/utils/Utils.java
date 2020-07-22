@@ -7,13 +7,9 @@ import net.md_5.bungee.api.chat.*;
 import net.md_5.bungee.chat.ComponentSerializer;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.Container;
 import org.bukkit.block.TileState;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -50,12 +46,17 @@ public final class Utils {
         return (ITEMS.contains(name) ? "item." : "block.") + name.replace(':', '.');
     }
     @NotNull
-    public static String getMaterialName(@NotNull final String data) {
+    public static String getBlockName(@NotNull final String data) {
         return "block." + getMaterialId(data).replace(':', '.');
     }
     @NotNull
     public static String getMaterialId(@NotNull final String data) {
         return data.split("\\[", 2)[0].split(Constants.TILE, 2)[0];
+    }
+    @NotNull
+    public static String getBlockName(@NotNull final Material type) {
+        final NamespacedKey k = type.getKey();
+        return "block." + k.getNamespace() + "." + k.getKey();
     }
 
     @NotNull
@@ -128,6 +129,15 @@ public final class Utils {
     }
 
     @NotNull
+    public static TextComponent getPlayerPerformerNameComponent(@NotNull final OfflinePlayer player, @NotNull final String id, final boolean pad) {
+        final String name = (String) ObjectUtils.defaultIfNull(player.getName(), "未知玩家");
+        final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, name));
+        t.setHoverEvent(genTextHoverEvent(id));
+        return t;
+    }
+
+    @NotNull
     public static BaseComponent getPerformerComponent(@Nullable final String performer) {
         return getPerformerComponent(performer, true);
     }
@@ -142,7 +152,7 @@ public final class Utils {
             s2 = getEntityName(performer.substring(1));
         } else if (performer.startsWith("#")) {
             s1 = "方块:";
-            s2 = getMaterialName(performer.substring(1));
+            s2 = getBlockName(performer.substring(1));
         } else return getPlayerPerformerNameComponent(performer, pad);
         final TextComponent t = new TextComponent(s1);
         t.setColor(ChatColor.GRAY);
@@ -154,8 +164,9 @@ public final class Utils {
 
     @NotNull
     public static String formatDuration(final long time) {
-        final String str = DurationFormatUtils.formatDuration(time, "d天H时m分s秒前");
+        final String str = DurationFormatUtils.formatDuration(time, "d天HH时m分s秒前", false);
         return str
+            .replace("0分", "")
             .replace("0天", "")
             .replace("0时", "");
     }
@@ -185,17 +196,6 @@ public final class Utils {
     }
 
     @NotNull
-    public static String getInventoryId(@NotNull final Inventory inventory) {
-        final InventoryHolder holder = inventory.getHolder();
-        if (holder == null) return "";
-        if (holder instanceof Entity) return ((Entity) holder).getUniqueId().toString();
-        if (holder instanceof Container) {
-            final Container b = (Container) holder;
-            return "#" + b.getWorld().getName() + "|"  + b.getX() + "|" + b.getY() + "|" + b.getZ();
-        } else return "";
-    }
-
-    @NotNull
     public static String getBlockPerformer(@NotNull final Block block) {
         return getBlockPerformer(block.getWorld().getName(), block.getX(), block.getY(), block.getZ());
     }
@@ -204,15 +204,44 @@ public final class Utils {
         return "#" + world + "|" + x + "|" + y + "|" + z;
     }
 
+    public static TextComponent getEntityPerformerComponent(@NotNull final String entity) {
+        final Entity e = Bukkit.getEntity(UUID.fromString(entity));
+        if (e == null) return Constants.UNKNOWN;
+        if (e instanceof OfflinePlayer) return getPlayerPerformerNameComponent((OfflinePlayer) e, entity, true);
+        final TextComponent t = new TextComponent("实体:");
+        t.setColor(ChatColor.GRAY);
+        final TranslatableComponent t2 = new TranslatableComponent(getEntityName(e.getType().getKey().toString()));
+        t2.setColor(ChatColor.WHITE);
+        t2.setHoverEvent(genTextHoverEvent(entity));
+        t2.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + entity));
+        t.addExtra(t2);
+        return t;
+    }
+
+    public static TextComponent getUnknownBlockPerformerComponent(@NotNull final String world, final int x, final int y, final int z) {
+        final TextComponent t = new TextComponent("方块");
+        processActionComponent(t, world, x, y, z);
+        return t;
+    }
+
+    public static TextComponent getBlockPerformerComponent(@NotNull final String world, final int x, final int y, final int z) {
+        final World w = Bukkit.getWorld(world);
+        if (w == null) return getUnknownBlockPerformerComponent(world, x, y, z);
+        final TextComponent t = new TextComponent("方块:");
+        t.setColor(ChatColor.GRAY);
+        final TranslatableComponent t2 = new TranslatableComponent(getBlockName(w.getBlockAt(x, y, z).getType()));
+        t2.setColor(ChatColor.WHITE);
+        t.addExtra(t2);
+        processActionComponent(t, world, x, y, z);
+        return t;
+    }
+
+    @SuppressWarnings("ConstantConditions")
     @NotNull
-    public static TextComponent getContainerPerformerName(@NotNull final String str) {
-        if (str.startsWith("#")) {
-            final TextComponent t = new TextComponent("非玩家:"), t1 = new TextComponent(Strings.padEnd(str.substring(1), 9, ' '));
-            t.setColor(ChatColor.GRAY);
-            t1.setColor(ChatColor.WHITE);
-            t.addExtra(t1);
-            return t;
-        } else return getPlayerPerformerNameComponent(str, true);
+    public static TextComponent getContainerPerformerName(@Nullable final String entity, @Nullable final String world, @Nullable final Number x, final Number y, final Number z) {
+        return entity == null || entity.isEmpty()
+            ? world == null || world.isEmpty() ? Constants.UNKNOWN : getBlockPerformerComponent(world, x.intValue(), y.intValue(), z.intValue())
+            : getEntityPerformerComponent(entity);
     }
 
     @NotNull
@@ -257,13 +286,13 @@ public final class Utils {
 
     @NotNull
     public static String getPlayerName(@NotNull final String player) {
-        return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "未知");
+        return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "未知玩家");
     }
 
     @NotNull
     public static TranslatableComponent getBlockComponent(@NotNull final String name) {
         final String id = getMaterialId(name);
-        final TranslatableComponent t = new TranslatableComponent(Utils.getMaterialName(id));
+        final TranslatableComponent t = new TranslatableComponent(Utils.getBlockName(id));
         t.setColor(ChatColor.LIGHT_PURPLE);
         t.setHoverEvent(genItemHoverEvent("{id:\"" + id + "\",Count:1b}"));
         return t;
@@ -321,18 +350,20 @@ public final class Utils {
             ? new String[] { str, arr[1].replace('|', ' ') }
             : new String[] { "", str.replace('|', ' ') };
     }
+
     @NotNull
-    public static TextComponent getContainerActionComponent(final boolean isAdd, @NotNull final String performer, @NotNull final String source, @NotNull final String target) {
+    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
         final TextComponent t = new TextComponent(isAdd ? " + " : " - ");
         t.setColor(isAdd ? ChatColor.GREEN : ChatColor.RED);
-        final String p;
-        if (performer.equals(source)) p = target;
-        else if (performer.equals(target)) p = source;
-        else p = source.isEmpty() ? target : source;
-        final String[] arr = performerToLocation(p);
-        t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + arr[0] + " " + arr[1]));
-        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + arr[1]));
+        final String loc = " " + x + " " + y + " " + z;
+        t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + world + loc));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp" + loc));
         return t;
+    }
+
+    public static boolean isAddContainerAction(@NotNull final Object[] arr, @NotNull final String world, final int x, final int y, final int z) {
+        return arr[8].equals(world) && ((Double) arr[9]).intValue() == x &&
+            ((Double) arr[10]).intValue() == y && ((Double) arr[11]).intValue() == z;
     }
 
     @NotNull
