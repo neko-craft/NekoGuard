@@ -31,6 +31,7 @@ public final class API {
     private final String chatRecords;
     private final String deathRecords;
     private final String blockRecords;
+    private final String spawnRecords;
     private final String commandRecords;
     private final String containerRecords;
     private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
@@ -46,6 +47,7 @@ public final class API {
         chatRecords = prefix + "Chats";
         commandRecords = prefix + "Commands";
         deathRecords = prefix + "Deaths";
+        spawnRecords = prefix + "Spawns";
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -87,7 +89,6 @@ public final class API {
                 db.write(builder.build());
             }));
         }, 0, 1);
-
     }
 
     public void recordChat(@NotNull final String msg, @NotNull final String performer) {
@@ -117,6 +118,20 @@ public final class API {
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
+    }
+
+    public void recordSpawn(@NotNull final Entity entity, @Nullable final String reason) {
+        final Location loc = entity.getLocation();
+        final Point.Builder builder = Point.measurement(spawnRecords)
+            .tag("type", entity.getType().getKey().toString())
+            .tag("world", loc.getWorld().getName())
+            .addField("x", loc.getBlockX())
+            .addField("y", loc.getBlockY())
+            .addField("z", loc.getBlockZ())
+            .addField("id", entity.getUniqueId().toString())
+            .time(curTime++, TimeUnit.NANOSECONDS);
+        if (reason != null) builder.tag("reason", reason);
+        db.write(builder.build());
     }
 
     public void recordDeath(@NotNull final String performer, @NotNull final Entity entity, @NotNull final String cause) {
@@ -263,6 +278,7 @@ public final class API {
         curTime++;
         containerActionList.add(action);
     }
+    @SuppressWarnings("unused")
     public void recordContainerAction(@NotNull final ItemStack is, @Nullable final String source, @Nullable final String target) {
         if (source == null && target == null) return;
         containerActionList.add(new ContainerAction(is, source, target, curTime++));
@@ -337,5 +353,27 @@ public final class API {
         query.where()
             .andNested().and(eq("sw", world)).and(eq("sx", x)).and(eq("sy", y)).and(eq("sz", z)).close()
             .orNested().and(eq("tw", world)).and(eq("tx", x)).and(eq("ty", y)).and(eq("tz", z)).close();
+    }
+    public static void processSingleContainerEntityQuery(@NotNull final SelectQueryImpl query, @NotNull final String entity) {
+        query.where().andNested().and(eq("se", entity)).or(eq("te", entity)).close();
+    }
+
+    @NotNull
+    public SelectQueryImpl querySpawn() {
+        return select()
+            .from(db.database, spawnRecords)
+            .orderBy(desc());
+    }
+
+    @NotNull
+    public SelectQueryImpl querySpawnCount() {
+        return select()
+            .countAll()
+            .from(db.database, spawnRecords);
+    }
+    @NotNull
+    public SelectQueryImpl querySpawn(final int page) {
+        final SelectQueryImpl query = querySpawn();
+        return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 }

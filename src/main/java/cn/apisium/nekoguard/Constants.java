@@ -3,6 +3,7 @@ package cn.apisium.nekoguard;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryType;
 
 public final class Constants {
@@ -14,6 +15,7 @@ public final class Constants {
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
     public static final String TP_MESSAGE = "§a点击立即传送到: §f";
     public static final TextComponent UNKNOWN = new TextComponent("未知");
+    public static final String ENTITY_ATTACK = EntityDamageEvent.DamageCause.ENTITY_ATTACK.name();
 
     static {
         UNKNOWN.setColor(ChatColor.GRAY);

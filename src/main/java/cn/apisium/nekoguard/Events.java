@@ -11,13 +11,19 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.*;
 import org.bukkit.event.server.ServerCommandEvent;
+import org.bukkit.event.vehicle.VehicleCreateEvent;
+import org.bukkit.event.vehicle.VehicleDamageEvent;
+import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 public final class Events implements Listener {
@@ -113,7 +119,7 @@ public final class Events implements Listener {
             (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
             !main.inspecting.contains(p)) return;
         e.setCancelled(true);
-        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0, null);
+        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
         else messages.sendQueryBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
     }
 
@@ -195,7 +201,7 @@ public final class Events implements Listener {
     public void onEntityDeath(final EntityDeathEvent e) {
         final LivingEntity entity = e.getEntity();
         if (!main.recordMonsterKilledWithoutCustomName && entity.getCustomName() == null &&
-            (entity instanceof Monster || entity instanceof Slime)) return;
+            (entity instanceof Monster || entity instanceof Slime || entity instanceof Ambient)) return;
         final EntityDamageEvent cause = entity.getLastDamageCause();
         final String killer = Utils.getKiller(entity),
             reason = cause == null ? "" : cause.getCause().name();
@@ -206,5 +212,57 @@ public final class Events implements Listener {
                 e2.getKeepLevel() ? 0 : e2.getDroppedExp()
             );
         } else api.recordDeath(killer, entity, reason);
+    }
+
+    @SuppressWarnings("SuspiciousMethodCalls")
+    @EventHandler
+    public void onEntityDamageByEntity(final EntityDamageByEntityEvent e) {
+        if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !main.inspecting.contains(e.getDamager())) return;
+        e.setCancelled(true);
+        if (e.getEntity() instanceof InventoryHolder)
+            messages.sendContainerActionsMessage(e.getDamager(), e.getEntity().getUniqueId().toString(), 0);
+        else messages.sendQuerySpawnMessage(e.getDamager(), e.getEntity().getUniqueId().toString(), 0);
+    }
+
+    @SuppressWarnings("SuspiciousMethodCalls")
+    @EventHandler
+    public void onVehicleDamage(final VehicleDamageEvent e) {
+        if (e.getAttacker() == null || !main.inspecting.contains(e.getAttacker())) return;
+        e.setCancelled(true);
+        if (e.getVehicle() instanceof InventoryHolder)
+            messages.sendContainerActionsMessage(e.getAttacker(), e.getVehicle().getUniqueId().toString(), 0);
+        else messages.sendQuerySpawnMessage(e.getAttacker(), e.getVehicle().getUniqueId().toString(), 0);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onVehicleDestroy(final VehicleDestroyEvent e) {
+        api.recordDeath(Utils.getEntityPerformer(e.getAttacker()), e.getVehicle(),
+            e.getAttacker() == null ? "UNKNOWN" : Constants.ENTITY_ATTACK);
+    }
+
+    @SuppressWarnings("SuspiciousMethodCalls")
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onHangingBreak(final HangingBreakEvent e) {
+        if (e.getEntity() instanceof LeashHitch) return;
+        final Entity remover = e instanceof HangingBreakByEntityEvent ? ((HangingBreakByEntityEvent) e).getRemover() : null;
+        if (remover != null && main.inspecting.contains(remover)) {
+            e.setCancelled(true);
+            messages.sendQuerySpawnMessage(remover, e.getEntity().getUniqueId().toString(), 0);
+        } else api.recordDeath(Utils.getEntityPerformer(remover), e.getEntity(), e.getCause().name());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntitySpawn(final EntitySpawnEvent e) {
+        final Entity entity = e.getEntity();
+        if (e.getEntity() instanceof LeashHitch) return;
+        if (entity instanceof Animals || entity instanceof Hanging || entity instanceof Fish ||
+            entity instanceof ArmorStand || entity instanceof Golem || entity instanceof Villager) {
+            api.recordSpawn(entity, Constants.IS_PAPER ? entity.getEntitySpawnReason().name() : null);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntitySpawn(final VehicleCreateEvent e) {
+        api.recordSpawn(e.getVehicle(), Constants.IS_PAPER ? e.getVehicle().getEntitySpawnReason().name() : null);
     }
 }

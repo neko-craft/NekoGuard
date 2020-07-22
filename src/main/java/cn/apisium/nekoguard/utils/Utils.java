@@ -212,9 +212,19 @@ public final class Utils {
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t2 = new TranslatableComponent(getEntityName(e.getType().getKey().toString()));
         t2.setColor(ChatColor.WHITE);
-        t2.setHoverEvent(genTextHoverEvent(entity));
+        t2.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE +entity));
         t2.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + entity));
         t.addExtra(t2);
+        return t;
+    }
+
+    public static TextComponent getEntityTypePerformerComponent(@NotNull final String id, @NotNull final String type) {
+        final TextComponent t = new TextComponent("[");
+        t.addExtra(new TranslatableComponent(getEntityName(type)));
+        t.addExtra("]");
+        t.setColor(ChatColor.LIGHT_PURPLE);
+        t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + id));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + id));
         return t;
     }
 
@@ -290,9 +300,11 @@ public final class Utils {
     }
 
     @NotNull
-    public static TranslatableComponent getBlockComponent(@NotNull final String name) {
+    public static TextComponent getBlockComponent(@NotNull final String name) {
         final String id = getMaterialId(name);
-        final TranslatableComponent t = new TranslatableComponent(Utils.getBlockName(id));
+        final TextComponent t = new TextComponent("[");
+        t.addExtra(new TranslatableComponent(Utils.getBlockName(id)));
+        t.addExtra("]");
         t.setColor(ChatColor.LIGHT_PURPLE);
         t.setHoverEvent(genItemHoverEvent("{id:\"" + id + "\",Count:1b}"));
         return t;
@@ -319,11 +331,11 @@ public final class Utils {
         if (type.length() == 36) return getPlayerPerformerNameComponent(type, false);
         final TextComponent t = new TextComponent("#" + type);
         if (CommandSenderType.BLOCK.name().equals(type)) {
-            t.setHoverEvent(genTextHoverEvent(performer));
+            t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + performer));
             t.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
                 "/tp " + performerToLocation(performer)[1]));
         } else if (CommandSenderType.ENTITY.name().equals(type)) {
-            t.setHoverEvent(genTextHoverEvent(performer));
+            t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + performer));
             t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + performer));
         }
         return t;
@@ -331,8 +343,7 @@ public final class Utils {
 
     @NotNull
     public static TextComponent getBlockActionComponent(final boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
-        final TextComponent t = new TextComponent(isAdd ? " + " : " - ");
-        t.setColor(isAdd ? ChatColor.GREEN : ChatColor.RED);
+        final TextComponent t = getAddOrRemoveActionComponent(isAdd);
         processActionComponent(t, world, x, y, z);
         return t;
     }
@@ -352,13 +363,35 @@ public final class Utils {
     }
 
     @NotNull
-    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
+    public static TextComponent getAddOrRemoveActionComponent(final boolean isAdd) {
         final TextComponent t = new TextComponent(isAdd ? " + " : " - ");
         t.setColor(isAdd ? ChatColor.GREEN : ChatColor.RED);
+        return t;
+    }
+
+    @NotNull
+    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String entity) {
+        final TextComponent t = getAddOrRemoveActionComponent(isAdd);
+        t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + entity));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + entity));
+        return t;
+    }
+
+    @NotNull
+    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
+        final TextComponent t = getAddOrRemoveActionComponent(isAdd);
         final String loc = " " + x + " " + y + " " + z;
         t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + world + loc));
         t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp" + loc));
         return t;
+    }
+
+    @NotNull
+    public static String getEntityPerformer(@Nullable final Entity entity) {
+        return entity == null
+            ? "" : entity instanceof OfflinePlayer
+                ? entity.getUniqueId().toString()
+                : "@" + entity.getType().getKey().toString();
     }
 
     public static boolean isAddContainerAction(@NotNull final Object[] arr, @NotNull final String world, final int x, final int y, final int z) {

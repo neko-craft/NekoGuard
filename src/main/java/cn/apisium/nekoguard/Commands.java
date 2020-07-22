@@ -113,6 +113,19 @@ public final class Commands extends BaseCommand {
                 processQuery(result, it, sender, false);
             });
         }
+
+        @Subcommand("container")
+        @CommandPermission("nekoguard.lookup.container")
+        public void lookupContainer(final CommandSender sender, final String[] args) {
+            final OptionParser parser = getParser(sender, false);
+            parser.acceptsAll(Arrays.asList("b", "block")).withOptionalArg().ofType(String.class);
+            final OptionSet result = parser.parse(args);
+            messages.sendQueryBlockMessage(sender, 0, it -> {
+                if (result.has("block")) it.where(
+                    regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
+                processQuery(result, it, sender, false);
+            });
+        }
     }
 
     @Subcommand("rollback|r")
@@ -142,7 +155,7 @@ public final class Commands extends BaseCommand {
         @CommandPermission("nekoguard.rollback.container")
         public void rollbackContainerActions(final CommandSender sender, final String[] args) {
             try {
-                final OptionSet result = CONTAINER_ACTIONS.parse(args);
+                final OptionSet result = parserContainerActionQuery(sender, true, args);
                 final Object t = result.valueOf("time");
                 if (t == null) {
                     sender.sendMessage("请提供时间!");
@@ -216,7 +229,7 @@ public final class Commands extends BaseCommand {
         final ArgumentAcceptingOptionSpec<Integer> x = parser.accepts("x").withRequiredArg().ofType(Integer.class),
             y = parser.accepts("y").withRequiredArg().ofType(Integer.class),
             z = parser.accepts("z").withRequiredArg().ofType(Integer.class);
-        final ArgumentAcceptingOptionSpec<String> world = parser.acceptsAll(Arrays.asList("w", "world")).withOptionalArg().ofType(String.class);
+        final ArgumentAcceptingOptionSpec<String> world = parser.acceptsAll(Arrays.asList("w", "world")).withRequiredArg().ofType(String.class);
         if (sender instanceof Player) {
             final Location p = ((Player) sender).getLocation();
             x.defaultsTo(p.getBlockX());
@@ -227,7 +240,67 @@ public final class Commands extends BaseCommand {
         return parser;
     }
 
+    private OptionSet parserContainerActionQuery(final CommandSender sender, final boolean isRollback, final String[] args) {
+        final OptionParser parser = new OptionParser();
+        parser.acceptsAll(Arrays.asList("r", "radius")).withRequiredArg().ofType(Integer.class).defaultsTo(5);
+        final OptionSpecBuilder b = parser.acceptsAll(Arrays.asList("t", "time"));
+        (isRollback ? b.withRequiredArg() : b.withOptionalArg()).ofType(String.class);
+        parser.acceptsAll(Arrays.asList("g", "global")).withOptionalArg();
+
+        final ArgumentAcceptingOptionSpec<String> world = parser.acceptsAll(Arrays.asList("w", "world")).withRequiredArg().ofType(String.class);
+        final ArgumentAcceptingOptionSpec<Integer> x = parser.accepts("x").withRequiredArg().ofType(Integer.class),
+            y = parser.accepts("y").withRequiredArg().ofType(Integer.class),
+            z = parser.accepts("z").withRequiredArg().ofType(Integer.class);
+
+        parser.acceptsAll(Arrays.asList("sx", "source-x")).withOptionalArg().ofType(Integer.class);
+        parser.acceptsAll(Arrays.asList("sy", "source-y")).withOptionalArg().ofType(Integer.class);
+        parser.acceptsAll(Arrays.asList("sz", "source-z")).withOptionalArg().ofType(Integer.class);
+
+        parser.acceptsAll(Arrays.asList("tx", "target-x")).withOptionalArg().ofType(Integer.class);
+        parser.acceptsAll(Arrays.asList("ty", "target-y")).withOptionalArg().ofType(Integer.class);
+        parser.acceptsAll(Arrays.asList("tz", "target-z")).withOptionalArg().ofType(Integer.class);
+
+        parser.acceptsAll(Arrays.asList("sw", "source-world")).withOptionalArg().ofType(String.class);
+        parser.acceptsAll(Arrays.asList("tw", "target-world")).withOptionalArg().ofType(String.class);
+        parser.acceptsAll(Arrays.asList("e", "entity")).withOptionalArg().ofType(String.class);
+        parser.acceptsAll(Arrays.asList("se", "source-entity")).withOptionalArg().ofType(String.class);
+        parser.acceptsAll(Arrays.asList("te", "target-entity")).withOptionalArg().ofType(String.class);
+
+        if (sender instanceof Player) {
+            final Location p = ((Player) sender).getLocation();
+            x.defaultsTo(p.getBlockX());
+            y.defaultsTo(p.getBlockY());
+            z.defaultsTo(p.getBlockZ());
+            world.defaultsTo(p.getWorld().getName());
+        }
+        return parser.parse(args);
+    }
+
     private void processQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {
+        final WhereQueryImpl<SelectQueryImpl> query = q.where();
+        if (isRollback || cmd.has("time")) {
+            final Object t = cmd.valueOf("time");
+            if (t == null) {
+                sender.sendMessage("请提供时间!");
+                throw Constants.IGNORED_ERROR;
+            }
+            query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
+        }
+        if (cmd.has("performer")) query.and(eq("performer",
+            Utils.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
+        if (!cmd.has("global")) {
+            final Integer lx = (Integer) cmd.valueOf("x"),
+                ly = (Integer) cmd.valueOf("y"),
+                lz = (Integer) cmd.valueOf("z"),
+                r = (Integer) cmd.valueOf("radius");
+            query.and(eq("world", cmd.valueOf("world")))
+                .and(gte("x", lx - r)).and(lte("x", lx + r))
+                .and(gte("y", ly - r)).and(lte("y", ly + r))
+                .and(gte("z", lz - r)).and(lte("z", lz + r));
+        }
+    }
+
+    private void processContainerQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
