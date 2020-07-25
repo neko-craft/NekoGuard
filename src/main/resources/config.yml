@@ -4,5 +4,6 @@ password: ''
 database: 'NekoGuard'
 measurementPrefix: ''
 
+commandActionHistoryCount: 6
 recordMonsterKilledWithoutCustomName: false
 recordItemDropsOfPlayerDeath: false

@@ -9,10 +9,12 @@ import co.aikar.commands.CommandIssuer;
 import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Subcommand;
+import com.google.common.collect.EvictingQueue;
 import joptsimple.ArgumentAcceptingOptionSpec;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpecBuilder;
+import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -23,14 +25,17 @@ import org.influxdb.querybuilder.WhereQueryImpl;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.WeakHashMap;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 
+@SuppressWarnings("UnstableApiUsage")
 @CommandAlias("nekoguard|guard|ng")
 public final class Commands extends BaseCommand {
     private final API api;
     private final Main main;
     private final Messages messages;
+    private final WeakHashMap<CommandSender, EvictingQueue<ChangeList>> commandActions = new WeakHashMap<>();
     private final static OptionParser LOOKUP_CHATS = new OptionParser(),
             LOOKUP_COMMANDS = new OptionParser(),
             CONTAINER_ACTIONS = new OptionParser();
@@ -117,14 +122,12 @@ public final class Commands extends BaseCommand {
         @Subcommand("container")
         @CommandPermission("nekoguard.lookup.container")
         public void lookupContainer(final CommandSender sender, final String[] args) {
-            final OptionParser parser = getParser(sender, false);
-            parser.acceptsAll(Arrays.asList("b", "block")).withOptionalArg().ofType(String.class);
-            final OptionSet result = parser.parse(args);
-            messages.sendQueryBlockMessage(sender, 0, it -> {
-                if (result.has("block")) it.where(
-                    regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
-                processQuery(result, it, sender, false);
-            });
+            try {
+                final OptionSet result = parserContainerActionQuery(sender, false, args);
+                messages.sendContainerActionsMessage(sender, 0, it -> processContainerQuery(result, it, sender, false));
+            } catch (Exception e) {
+                if (e != Constants.IGNORED_ERROR) e.printStackTrace();
+            }
         }
     }
 
@@ -144,7 +147,9 @@ public final class Commands extends BaseCommand {
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
-                    new BlockChangeList(Mappers.BLOCKS.parse(data)).doChange(sender, it -> sender.sendMessage("Success"));
+                    final BlockChangeList list = new BlockChangeList(Mappers.BLOCKS.parse(data));
+                    addCommandAction(sender, list);
+                    list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -156,28 +161,14 @@ public final class Commands extends BaseCommand {
         public void rollbackContainerActions(final CommandSender sender, final String[] args) {
             try {
                 final OptionSet result = parserContainerActionQuery(sender, true, args);
-                final Object t = result.valueOf("time");
-                if (t == null) {
-                    sender.sendMessage("请提供时间!");
-                    throw Constants.IGNORED_ERROR;
-                }
-                final WhereQueryImpl<SelectQueryImpl> query =
-                    api.queryContainerActions().orderBy(asc()).where(new SimpleTimeClause((String) t, '>'));
-                if (result.has("performer")) query.and(eq("performer",
-                    Utils.getPerformerQueryName((String) result.valueOf("performer"), sender)));
-                if (result.has("both")) {
-                    final String value = Utils.getPerformerQueryName((String) result.valueOf("both"), sender);
-                    query.andNested().and(eq("source", value)).or(eq("target", value));
-                } else {
-                    if (result.has("source")) query.and(eq("source",
-                        Utils.getPerformerQueryName((String) result.valueOf("source"), sender)));
-                    if (result.has("target")) query.and(eq("target",
-                        Utils.getPerformerQueryName((String) result.valueOf("target"), sender)));
-                }
+                final SelectQueryImpl query = api.queryContainerActions().orderBy(asc());
+                processContainerQuery(result, query, sender, true);
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
-                    new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data)).doChange(sender, it -> sender.sendMessage("Success"));
+                    final ContainerChangeList list = new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
+                    addCommandAction(sender, list);
+                    list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -205,7 +196,9 @@ public final class Commands extends BaseCommand {
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
-                    new EntityChangeList(Mappers.DEATHS.parse(data)).doChange(sender, it -> sender.sendMessage("Success"));
+                    final EntityChangeList list = new EntityChangeList(Mappers.DEATHS.parse(data));
+                    addCommandAction(sender, list);
+                    list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -248,9 +241,9 @@ public final class Commands extends BaseCommand {
         parser.acceptsAll(Arrays.asList("g", "global")).withOptionalArg();
 
         final ArgumentAcceptingOptionSpec<String> world = parser.acceptsAll(Arrays.asList("w", "world")).withRequiredArg().ofType(String.class);
-        final ArgumentAcceptingOptionSpec<Integer> x = parser.accepts("x").withRequiredArg().ofType(Integer.class),
-            y = parser.accepts("y").withRequiredArg().ofType(Integer.class),
-            z = parser.accepts("z").withRequiredArg().ofType(Integer.class);
+        final ArgumentAcceptingOptionSpec<Integer> x = parser.accepts("x").withOptionalArg().ofType(Integer.class),
+            y = parser.accepts("y").withOptionalArg().ofType(Integer.class),
+            z = parser.accepts("z").withOptionalArg().ofType(Integer.class);
 
         parser.acceptsAll(Arrays.asList("sx", "source-x")).withOptionalArg().ofType(Integer.class);
         parser.acceptsAll(Arrays.asList("sy", "source-y")).withOptionalArg().ofType(Integer.class);
@@ -313,14 +306,64 @@ public final class Commands extends BaseCommand {
         if (cmd.has("performer")) query.and(eq("performer",
             Utils.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
         if (!cmd.has("global")) {
-            final Integer lx = (Integer) cmd.valueOf("x"),
-                ly = (Integer) cmd.valueOf("y"),
-                lz = (Integer) cmd.valueOf("z"),
+            Integer x = (Integer) cmd.valueOf("x"),
+                y = (Integer) cmd.valueOf("y"),
+                z = (Integer) cmd.valueOf("z"),
+                sx = (Integer) cmd.valueOf("sx"),
+                sy = (Integer) cmd.valueOf("sy"),
+                sz = (Integer) cmd.valueOf("sz"),
+                tx = (Integer) cmd.valueOf("tx"),
+                ty = (Integer) cmd.valueOf("ty"),
+                tz = (Integer) cmd.valueOf("tz"),
                 r = (Integer) cmd.valueOf("radius");
-            query.and(eq("world", cmd.valueOf("world")))
-                .and(gte("x", lx - r)).and(lte("x", lx + r))
-                .and(gte("y", ly - r)).and(lte("y", ly + r))
-                .and(gte("z", lz - r)).and(lte("z", lz + r));
+            String e = (String) cmd.valueOf("e"),
+                se = (String) cmd.valueOf("se"),
+                te = (String) cmd.valueOf("te"),
+                w = (String) cmd.valueOf("w"),
+                sw = (String) cmd.valueOf("sw"),
+                tw = (String) cmd.valueOf("tw");
+            if (se == null && te == null && sw == null && tw == null) {
+                if (e != null) query.andNested().and(eq("se", e)).or(eq("te", e)).close();
+                else if (w != null && x != null && y != null && z != null) query.andNested().and(eq("sw", w))
+                    .and(gte("sx", x - r)).and(lte("sx", x + r))
+                    .and(gte("sy", y - r)).and(lte("sy", y + r))
+                    .and(gte("sz", z - r)).and(lte("sz", z + r)).close()
+                    .orNested().and(eq("tw", w))
+                    .and(gte("tx", x - r)).and(lte("tx", x + r))
+                    .and(gte("ty", y - r)).and(lte("ty", y + r))
+                    .and(gte("tz", z - r)).and(lte("tz", z + r)).close();
+                else {
+                    sender.sendMessage("请至少提供一个查询条件!");
+                    throw Constants.IGNORED_ERROR;
+                }
+            } else {
+                if (se == null) {
+                    if (sw != null) {
+                        sx = (Integer) ObjectUtils.defaultIfNull(sx, x);
+                        sy = (Integer) ObjectUtils.defaultIfNull(sy, y);
+                        sz = (Integer) ObjectUtils.defaultIfNull(sz, z);
+                        query.andNested().and(eq("sw", sw))
+                            .and(gte("sx", sx - r)).and(lte("sx", sx + r))
+                            .and(gte("sy", sy - r)).and(lte("sy", sy + r))
+                            .and(gte("sz", sz - r)).and(lte("sz", sz + r)).close();
+                    }
+                } else query.and(eq("se", ObjectUtils.defaultIfNull(se, e)));
+                if (te == null) {
+                    if (tw != null) {
+                        tx = (Integer) ObjectUtils.defaultIfNull(tx, x);
+                        ty = (Integer) ObjectUtils.defaultIfNull(ty, y);
+                        tz = (Integer) ObjectUtils.defaultIfNull(tz, z);
+                        query.andNested().and(eq("tw", tw))
+                            .and(gte("tx", tx - r)).and(lte("tx", tx + r))
+                            .and(gte("ty", ty - r)).and(lte("ty", ty + r))
+                            .and(gte("tz", tz - r)).and(lte("tz", tz + r)).close();
+                    }
+                } else query.and(eq("te", ObjectUtils.defaultIfNull(te, e)));
+            }
         }
+    }
+
+    private void addCommandAction(final CommandSender sender, final ChangeList list) {
+        commandActions.computeIfAbsent(sender, it -> EvictingQueue.create(main.commandActionHistoryCount)).add(list);
     }
 }

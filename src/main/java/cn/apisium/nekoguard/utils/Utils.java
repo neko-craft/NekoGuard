@@ -204,10 +204,10 @@ public final class Utils {
         return "#" + world + "|" + x + "|" + y + "|" + z;
     }
 
-    public static TextComponent getEntityPerformerComponent(@NotNull final String entity) {
+    public static TextComponent getEntityPerformerComponent(@NotNull final String entity, final boolean pad) {
         final Entity e = Bukkit.getEntity(UUID.fromString(entity));
         if (e == null) return Constants.UNKNOWN;
-        if (e instanceof OfflinePlayer) return getPlayerPerformerNameComponent((OfflinePlayer) e, entity, true);
+        if (e instanceof OfflinePlayer) return getPlayerPerformerNameComponent((OfflinePlayer) e, entity, pad);
         final TextComponent t = new TextComponent("ΚµΜε:");
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t2 = new TranslatableComponent(getEntityName(e.getType().getKey().toString()));
@@ -251,7 +251,15 @@ public final class Utils {
     public static TextComponent getContainerPerformerName(@Nullable final String entity, @Nullable final String world, @Nullable final Number x, final Number y, final Number z) {
         return entity == null || entity.isEmpty()
             ? world == null || world.isEmpty() ? Constants.UNKNOWN : getBlockPerformerComponent(world, x.intValue(), y.intValue(), z.intValue())
-            : getEntityPerformerComponent(entity);
+            : getEntityPerformerComponent(entity, true);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @NotNull
+    public static TextComponent getContainerPerformerNameRoughly(@Nullable final String entity, @Nullable final String world, @Nullable final Number x, final Number y, final Number z) {
+        return entity == null || entity.isEmpty()
+            ? world == null || world.isEmpty() ? Constants.UNKNOWN : getUnknownBlockPerformerComponent(world, x.intValue(), y.intValue(), z.intValue())
+            : getEntityPerformerComponent(entity, false);
     }
 
     @NotNull
@@ -395,13 +403,8 @@ public final class Utils {
     }
 
     public static boolean isAddContainerAction(@NotNull final Object[] arr, @NotNull final String world, final int x, final int y, final int z) {
-        return arr[8].equals(world) && ((Double) arr[9]).intValue() == x &&
+        return world.equals(arr[8]) && ((Double) arr[9]).intValue() == x &&
             ((Double) arr[10]).intValue() == y && ((Double) arr[11]).intValue() == z;
-    }
-
-    @NotNull
-    public static String getChunkKey(@NotNull final String world, final int x, final int z) {
-        return world + "|" + (x >> 4) + "|" + (z >> 4);
     }
 
     @NotNull
@@ -437,19 +440,20 @@ public final class Utils {
         } else return performer;
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Nullable
-    public static Inventory getInventory(@Nullable final String str) {
-        if (str == null || str.isEmpty()) return null;
-        else if (str.startsWith("#")) {
-            final String[] arr = str.substring(1).split("\\|", 4);
-            final World world = Bukkit.getWorld(arr[0]);
-            if (world == null) return null;
-            final BlockState state = world.getBlockAt(Integer.parseInt(arr[1]), Integer.parseInt(arr[2]),
-                Integer.parseInt(arr[3])).getState();
-            return state instanceof InventoryHolder ? ((InventoryHolder) state).getInventory() : null;
-        } else {
-            final Entity entity = Bukkit.getEntity(UUID.fromString(str));
-            return entity instanceof InventoryHolder ? ((InventoryHolder) entity).getInventory() : null;
+    public static Inventory getInventory(@Nullable final String entity, @Nullable final String world, @Nullable final Double x,
+                                         @Nullable final Double y, @Nullable final Double z) {
+        if (entity != null) {
+            final Entity e = Bukkit.getEntity(UUID.fromString(entity));
+            return e instanceof InventoryHolder ? ((InventoryHolder) e).getInventory() : null;
         }
+        if (world != null) {
+            final World w = Bukkit.getWorld(world);
+            if (w == null) return null;
+            final BlockState state = w.getBlockAt(x.intValue(), y.intValue(), z.intValue()).getState();
+            return state instanceof InventoryHolder ? ((InventoryHolder) state).getInventory() : null;
+        }
+        return null;
     }
 }

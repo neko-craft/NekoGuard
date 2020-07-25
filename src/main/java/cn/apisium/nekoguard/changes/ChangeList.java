@@ -9,10 +9,16 @@ import java.util.function.Consumer;
 
 public abstract class ChangeList {
     int failedCount;
-    final int allCount;
+    int allCount;
     int successCount;
+    final SeriesMapper.Mapper mapper;
     ChangeList(final SeriesMapper.Mapper mapper) {
+        this.mapper = mapper;
         allCount = mapper.count;
+    }
+    ChangeList(final SeriesMapper.Mapper mapper, final int count) {
+        this.mapper = mapper;
+        allCount = count;
     }
 
     public abstract void doChange(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback);

@@ -14,8 +14,8 @@ import org.bukkit.command.CommandSender;
 import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.time.Instant;
 import java.util.function.Consumer;
 
@@ -25,7 +25,6 @@ import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.eq;
 public final class Messages {
     final API api;
     final Database db;
-    private final static TextComponent SPACE = new TextComponent("  ");
 
     public Messages(final API api, final Database db) {
         this.api = api;
@@ -58,7 +57,7 @@ public final class Messages {
                 for (final Object[] arr : mapper.all()) {
                     final TextComponent t = new TextComponent(": " + arr[3]);
                     t.setColor(ChatColor.GRAY);
-                    sender.sendMessage(Utils.getTimeComponent((String) arr[0], now),
+                    sender.spigot().sendMessage(Utils.getTimeComponent((String) arr[0], now),
                         Utils.getPlayerCommandNameComponent((String) arr[1], (String) arr[2]),
                         t
                     );
@@ -66,7 +65,7 @@ public final class Messages {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            sender.sendMessage(Constants.makeFooter(page, all));
+            sender.spigot().sendMessage(Constants.makeFooter(page, all));
         })));
     }
 
@@ -84,7 +83,7 @@ public final class Messages {
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
                 try {
-                    for (final Object[] arr : mapper.all()) sender.sendMessage(
+                    for (final Object[] arr : mapper.all()) sender.spigot().sendMessage(
                         Utils.getBlockActionComponent(arr[1].equals("1"), (String) arr[4],
                             ((Double) arr[5]).intValue(), ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
                         Utils.getPerformerComponent((String) arr[2]),
@@ -94,7 +93,7 @@ public final class Messages {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sender.sendMessage(Constants.makeFooter(page, all));
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
     }
@@ -120,13 +119,13 @@ public final class Messages {
             final long now = Instant.now().toEpochMilli();
             final String username = player == null ? null : Utils.getPlayerName(player);
             try {
-                for (final Object[] arr : mapper.all()) sender.sendMessage(Utils.getTimeComponent((String) arr[0], now),
+                for (final Object[] arr : mapper.all()) sender.spigot().sendMessage(Utils.getTimeComponent((String) arr[0], now),
                     new TextComponent(ObjectUtils.defaultIfNull(username, Utils.getPlayerName((String) arr[1])) +
                         "§7: " + arr[2]));
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            sender.sendMessage(Constants.makeFooter(page, all));
+            sender.spigot().sendMessage(Constants.makeFooter(page, all));
         })));
     }
 
@@ -146,10 +145,10 @@ public final class Messages {
                         final TextComponent t = new TextComponent((String) arr[2]);
                         t.setColor(ChatColor.GRAY);
                         final boolean isAdd = Utils.isAddContainerAction(arr, world, x, y, z);
-                        sender.sendMessage(
+                        sender.spigot().sendMessage(
                             Utils.getContainerActionComponent(isAdd, world, x, y, z),
                             Utils.getItemStackDetails((String) arr[1]),
-                            SPACE,
+                            Constants.SPACE,
                             isAdd
                                 ? Utils.getContainerPerformerName((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6])
                                 : Utils.getContainerPerformerName((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]),
@@ -159,7 +158,7 @@ public final class Messages {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sender.sendMessage(Constants.makeFooter(page, all));
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
     }
@@ -180,10 +179,10 @@ public final class Messages {
                         final TextComponent t = new TextComponent((String) arr[2]);
                         t.setColor(ChatColor.GRAY);
                         final boolean isAdd = arr[7].equals(entity);
-                        sender.sendMessage(
+                        sender.spigot().sendMessage(
                             Utils.getContainerActionComponent(isAdd, entity),
                             Utils.getItemStackDetails((String) arr[1]),
-                            SPACE,
+                            Constants.SPACE,
                             isAdd
                                 ? Utils.getContainerPerformerName((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6])
                                 : Utils.getContainerPerformerName((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]),
@@ -193,42 +192,42 @@ public final class Messages {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sender.sendMessage(Constants.makeFooter(page, all));
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
     }
 
-//    public void sendContainerActionsMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
-//        final SelectQueryImpl q1 = api.queryContainerActionsCount(), q2 = api.queryContainerActions(page);
-//        if (fn != null) {
-//            fn.accept(q1);
-//            fn.accept(q2);
-//        }
-//        db.query(q1, Utils.getCountConsumer(all ->
-//            db.query(q2, res -> {
-//                final QueryResult.Series data = Utils.getFirstResult(res);
-//                if (data == null) return;
-//                final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
-//                sender.sendMessage(Constants.HEADER);
-//                final long now = Instant.now().toEpochMilli();
-//                try {
-//                    for (final Object[] arr : mapper.all()) {
-//                        final TextComponent t = new TextComponent((String) arr[2]);
-//                        t.setColor(ChatColor.GRAY);
-//                        sender.sendMessage(
-//                            Utils.getContainerActionComponent(!id.equals(arr[2]), (String) arr[1], (String) arr[2], (String) arr[3]),
-//                            Utils.getContainerPerformerName((String) arr[1]),
-//                            Utils.getTimeComponent((String) arr[0], now),
-//                            Utils.getItemStackDetails((String) arr[4])
-//                        );
-//                    }
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//                sender.sendMessage(Constants.makeFooter(page, all));
-//            })
-//        ));
-//    }
+    public void sendContainerActionsMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        final SelectQueryImpl q1 = api.queryContainerActionsCount(), q2 = api.queryContainerActions(page);
+        if (fn != null) {
+            fn.accept(q1);
+            fn.accept(q2);
+        }
+        db.query(q1, Utils.getCountConsumer(all ->
+            db.query(q2, res -> {
+                final QueryResult.Series data = Utils.getFirstResult(res);
+                if (data == null) return;
+                final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
+                sender.sendMessage(Constants.HEADER);
+                final long now = Instant.now().toEpochMilli();
+                try {
+                    for (final Object[] arr : mapper.all()) {
+                        sender.spigot().sendMessage(
+                            Utils.getTimeComponent((String) arr[0], now),
+                            Utils.getItemStackDetails((String) arr[1]),
+                            Constants.SPACE,
+                            Utils.getContainerPerformerNameRoughly((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6]),
+                            Constants.LEFT_ARROW,
+                            Utils.getContainerPerformerNameRoughly((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11])
+                        );
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
+            })
+        ));
+    }
 
     public void sendQueryDeathMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
         final SelectQueryImpl q1 = api.queryDeathCount(), q2 = api.queryDeath(page);
@@ -251,7 +250,7 @@ public final class Messages {
                         icon.setColor(ChatColor.RED);
                         Utils.processActionComponent(icon, (String) arr[5], ((Double) arr[6]).intValue(),
                             ((Double) arr[7]).intValue(), ((Double) arr[8]).intValue());
-                        sender.sendMessage(
+                        sender.spigot().sendMessage(
                             Utils.getTimeComponent((String) arr[0], now),
                             reason,
                             Utils.getPerformerComponent((String) arr[1], false),
@@ -262,7 +261,7 @@ public final class Messages {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sender.sendMessage(Constants.makeFooter(page, all));
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
     }
@@ -289,7 +288,7 @@ public final class Messages {
                             (String) ObjectUtils.defaultIfNull(arr[1], "UNKNOWN"), 10, " "));
                         Utils.processActionComponent(reason, (String) arr[3], ((Double) arr[4]).intValue(),
                             ((Double) arr[5]).intValue(), ((Double) arr[6]).intValue());
-                        sender.sendMessage(
+                        sender.spigot().sendMessage(
                             Utils.getTimeComponent((String) arr[0], now),
                             reason,
                             Utils.getEntityTypePerformerComponent((String) arr[7], (String) arr[2])
@@ -298,7 +297,7 @@ public final class Messages {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                sender.sendMessage(Constants.makeFooter(page, all));
+                sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
     }

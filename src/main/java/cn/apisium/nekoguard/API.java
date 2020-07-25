@@ -18,8 +18,8 @@ import org.influxdb.dto.Point;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -190,7 +190,7 @@ public final class API {
                 .addField("x", block.getX())
                 .addField("y", block.getY())
                 .addField("z", block.getZ())
-                .addField("data", Utils.getFullBlockData(block))
+                .addField("block", Utils.getFullBlockData(block))
                 .time(curTime++, TimeUnit.NANOSECONDS)
                 .build()
         );
@@ -210,7 +210,7 @@ public final class API {
             .addField("x", block.getX())
             .addField("y", block.getY())
             .addField("z", block.getZ())
-            .addField("data", type.getKey().toString())
+            .addField("block", type.getKey().toString())
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -226,7 +226,7 @@ public final class API {
             .addField("x", block.getX())
             .addField("y", block.getY())
             .addField("z", block.getZ())
-            .addField("data", Utils.getFullBlockData(block.getState()))
+            .addField("block", Utils.getFullBlockData(block.getState()))
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build());
         db.instance.write(builder.build());

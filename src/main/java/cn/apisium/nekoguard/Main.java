@@ -25,6 +25,7 @@ public final class Main extends JavaPlugin {
     private API api;
     private Messages messages;
     private static Main INSTANCE;
+    protected int commandActionHistoryCount = 6;
     protected boolean recordMonsterKilledWithoutCustomName = false;
     protected boolean recordItemDropsOfPlayerDeath = false;
     protected final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
@@ -41,6 +42,7 @@ public final class Main extends JavaPlugin {
             setEnabled(false);
             return;
         }
+        commandActionHistoryCount = getConfig().getInt("commandActionHistoryCount", 6);
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
         recordItemDropsOfPlayerDeath = getConfig().getBoolean("recordItemDropsOfPlayerDeath", false);
         db = new Database(
