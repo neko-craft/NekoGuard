@@ -16,23 +16,19 @@ repositories {
         name = 'sonatype'
         url = 'https://oss.sonatype.org/content/groups/public/'
     }
-    maven { url = "https://repo.aikar.co/content/groups/aikar/" }
+    maven { url 'https://www.jitpack.io' }
 }
 
 dependencies {
     compileOnly 'org.spigotmc:plugin-annotations:1.2.3-SNAPSHOT'
     compileOnly 'com.destroystokyo.paper:paper-api:1.16.1-R0.1-SNAPSHOT'
     compileOnly 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
-    compile 'org.influxdb:influxdb-java:2.19'
-    compile 'co.aikar:acf-paper:0.5.0-SNAPSHOT'
+    compile 'com.github.neko-craft:NekoCommander:cfdec3c2b5'
+    compile ('org.influxdb:influxdb-java:2.19') {
+        exclude group: 'org.jetbrains', module: 'annotations'
+    }
 
     annotationProcessor 'org.spigotmc:plugin-annotations:1.2.3-SNAPSHOT'
-}
-
-compileJava {
-    options.compilerArgs += ['-parameters']
-    options.fork = true
-    options.forkOptions.executable = 'javac'
 }
 
 jar {

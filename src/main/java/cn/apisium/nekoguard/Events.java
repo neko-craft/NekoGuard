@@ -207,10 +207,7 @@ public final class Events implements Listener {
             reason = cause == null ? "" : cause.getCause().name();
         if (e instanceof PlayerDeathEvent) {
             final PlayerDeathEvent e2 = (PlayerDeathEvent) e;
-            api.recordPlayerDeath(killer, e2.getEntity(), reason,
-                e2.getKeepInventory() ? null : e2.getDrops(),
-                e2.getKeepLevel() ? 0 : e2.getDroppedExp()
-            );
+            api.recordPlayerDeath(killer, e2.getEntity(), reason, e2.getKeepLevel() ? 0 : e2.getDroppedExp());
         } else api.recordDeath(killer, entity, reason);
     }
 

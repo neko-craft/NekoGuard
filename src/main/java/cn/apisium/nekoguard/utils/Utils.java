@@ -14,6 +14,7 @@ import org.bukkit.block.TileState;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageByBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -455,5 +456,13 @@ public final class Utils {
             return state instanceof InventoryHolder ? ((InventoryHolder) state).getInventory() : null;
         }
         return null;
+    }
+
+    @NotNull
+    public static TextComponent genCopyComponent(@NotNull final String text, @Nullable final String prefix) {
+        final TextComponent t = new TextComponent(prefix == null ? text : prefix + text);
+        t.setColor(ChatColor.GRAY);
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, text));
+        return t;
     }
 }

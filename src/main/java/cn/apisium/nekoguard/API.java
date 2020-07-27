@@ -1,8 +1,6 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.*;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -36,12 +34,10 @@ public final class API {
     private final String containerRecords;
     private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
-    private final Main main;
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
 
     API(final String prefix, final Main plugin) {
         this.db = plugin.getDatabase();
-        main = plugin;
         blockRecords = prefix + "Blocks";
         containerRecords = prefix + "Containers";
         chatRecords = prefix + "Chats";
@@ -149,25 +145,14 @@ public final class API {
             .build()
         );
     }
-    public void recordPlayerDeath(@NotNull final String performer, @NotNull final Player player, @NotNull final String cause, @Nullable final List<ItemStack> drops, final int exp) {
-        final String str;
-        if (main.recordItemDropsOfPlayerDeath) {
-            final JsonObject json = new JsonObject();
-            if (drops != null && !drops.isEmpty()) {
-                final JsonArray arr = new JsonArray();
-                drops.forEach(it -> arr.add(NMSUtils.serializeItemStack(it)));
-                json.add("drops", arr);
-            }
-            if (exp > 0) json.addProperty("exp", exp);
-            str = json.size() == 0 ? "" : json.toString();
-        } else str = "";
+    public void recordPlayerDeath(@NotNull final String performer, @NotNull final Player player, @NotNull final String cause, final int exp) {
         final Location loc = player.getLocation();
         db.write(Point.measurement(deathRecords)
             .tag("performer", performer)
             .tag("cause", cause)
             .tag("type", player.getUniqueId().toString())
             .tag("world", loc.getWorld().getName())
-            .addField("entity", str)
+            .addField("entity", String.valueOf(exp))
             .addField("x", loc.getBlockX())
             .addField("y", loc.getBlockY())
             .addField("z", loc.getBlockZ())

@@ -6,4 +6,3 @@ measurementPrefix: ''
 
 commandActionHistoryCount: 6
 recordMonsterKilledWithoutCustomName: false
-recordItemDropsOfPlayerDeath: false
