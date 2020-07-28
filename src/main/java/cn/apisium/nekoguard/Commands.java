@@ -4,6 +4,7 @@ import cn.apisium.nekocommander.*;
 import cn.apisium.nekocommander.completer.PlayersCompleter;
 import cn.apisium.nekoguard.changes.*;
 import cn.apisium.nekoguard.mappers.Mappers;
+import cn.apisium.nekoguard.utils.Completes;
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import cn.apisium.nekoguard.utils.Utils;
 import com.google.common.collect.EvictingQueue;
@@ -18,6 +19,7 @@ import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Instant;
 import java.util.WeakHashMap;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
@@ -41,8 +43,13 @@ public final class Commands implements BaseCommand {
     @Permission("nekoguard.inspect")
     public void inspect(@NotNull final Player player) {
         player.setGravity(true);
-        if (main.inspecting.contains(player)) main.inspecting.remove(player);
-        else main.inspecting.add(player);
+        if (main.inspecting.contains(player)) {
+            main.inspecting.remove(player);
+            player.sendMessage("§e[NekoGuard] §b当前已经退出了审查模式!");
+        } else {
+            main.inspecting.add(player);
+            player.sendMessage(Constants.IN_INSPECTING);
+        }
     }
 
     @Command("l")
@@ -64,20 +71,45 @@ public final class Commands implements BaseCommand {
         public void lookupCommands(
             @NotNull final CommandSender sender,
             @Nullable @Argument({ "t", "time" }) final String time,
-            @Nullable @Argument(value = { "p", "performer" }) final String performer
+            @Nullable @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class) final String performer
         ) {
             messages.sendQueryCommandMessage(sender, performer, 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause(time)));
+        }
+
+        @Command("item")
+        @Permission("nekoguard.lookup.item")
+        @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
+        @Argument({ "t", "time" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
+        @Argument(value = { "i", "item" }, completer = Completes.MaterialCompleter.class)
+        @Argument(value = { "g", "global" }, type = Boolean.class)
+        @Argument({ "w", "world" })
+        @Argument(value = "x", type = Integer.class)
+        @Argument(value = "y", type = Integer.class)
+        @Argument(value = "z", type = Integer.class)
+        public void lookupItemActions(
+            @NotNull final CommandSender sender,
+            @NotNull final OptionSet result,
+            @Nullable @Argument(value = "drop", type = Boolean.class) final Boolean isDrop,
+            @Nullable @Argument(value = "pickup", type = Boolean.class) final Boolean isPickup
+        ) {
+            messages.sendItemActionMessage(sender, 0, it -> {
+                final boolean drop = isDrop == null || isDrop, pickup = isPickup == null || isPickup;
+                if (drop && !pickup) it.where(eq("action", "0"));
+                else if (!drop && pickup) it.where(eq("action", "1"));
+                processQuery(result, it, sender, false);
+            });
         }
 
         @Command("block")
         @Permission("nekoguard.lookup.block")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
-        @Argument(value = { "b", "block" })
+        @Argument({ "w", "world" })
+        @Argument({ "b", "block" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -89,15 +121,15 @@ public final class Commands implements BaseCommand {
             });
         }
 
-        @Command("entity")
-        @Permission("nekoguard.lookup.entity")
+        @Command("death")
+        @Permission("nekoguard.lookup.death")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
-        @Argument(value = { "e", "entity", "type" })
-        @Argument(value = { "l", "player" })
+        @Argument({ "w", "world" })
+        @Argument({ "e", "entity", "type" })
+        @Argument({ "l", "player" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -118,20 +150,20 @@ public final class Commands implements BaseCommand {
         @Permission("nekoguard.lookup.container")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
+        @Argument({ "w", "world" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        @Argument(value = { "e", "entity" })
-        @Argument(value = { "se", "source-entity" })
-        @Argument(value = { "sw", "source-world" })
+        @Argument({ "e", "entity" })
+        @Argument({ "se", "source-entity" })
+        @Argument({ "sw", "source-world" })
         @Argument(value = { "sx", "source-x" }, type = Integer.class)
         @Argument(value = { "sy", "source-y" }, type = Integer.class)
         @Argument(value = { "sz", "source-z" }, type = Integer.class)
-        @Argument(value = { "te", "target-entity" })
-        @Argument(value = { "tw", "target-world" })
+        @Argument({ "te", "target-entity" })
+        @Argument({ "tw", "target-world" })
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
@@ -144,16 +176,46 @@ public final class Commands implements BaseCommand {
         }
     }
 
+    @Command("fetch")
+    public class FetchCommand implements BaseCommand {
+        @Command("action")
+        @Permission("nekoguard.fetch.action")
+        public boolean fetchActionItem(final @NotNull Player sender, @NotNull final String[] args) {
+            if (args.length != 1) return false;
+            try {
+                Instant.parse(args[0]);
+                api.fetchActionItemIntoInventory(sender.getInventory(), args[0],
+                    it -> sender.sendMessage(it ? Constants.SUCCESS : Constants.FAILED));
+                return true;
+            } catch (final Exception ignored) {
+                return false;
+            }
+        }
+        @Command("container")
+        @Permission("nekoguard.fetch.container")
+        public boolean fetchContainerItem(final @NotNull Player sender, @NotNull final String[] args) {
+            if (args.length != 1) return false;
+            try {
+                Instant.parse(args[0]);
+                api.fetchContainerItemIntoInventory(sender.getInventory(), args[0],
+                    it -> sender.sendMessage(it ? Constants.SUCCESS : Constants.FAILED));
+                return true;
+            } catch (final Exception ignored) {
+                return false;
+            }
+        }
+    }
+
     @Command("rollback")
     public class RollbackCommand implements BaseCommand {
         @Command("block")
         @Permission("nekoguard.rollback.block")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
-        @Argument(value = { "b", "block" })
+        @Argument({ "w", "world" })
+        @Argument({ "b", "block" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -179,20 +241,20 @@ public final class Commands implements BaseCommand {
         @Permission("nekoguard.rollback.container")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
+        @Argument({ "w", "world" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        @Argument(value = { "e", "entity" })
-        @Argument(value = { "se", "source-entity" })
-        @Argument(value = { "sw", "source-world" })
+        @Argument({ "e", "entity" })
+        @Argument({ "se", "source-entity" })
+        @Argument({ "sw", "source-world" })
         @Argument(value = { "sx", "source-x" }, type = Integer.class)
         @Argument(value = { "sy", "source-y" }, type = Integer.class)
         @Argument(value = { "sz", "source-z" }, type = Integer.class)
-        @Argument(value = { "te", "target-entity" })
-        @Argument(value = { "tw", "target-world" })
+        @Argument({ "te", "target-entity" })
+        @Argument({ "tw", "target-world" })
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
@@ -216,11 +278,11 @@ public final class Commands implements BaseCommand {
         @Permission("nekoguard.rollback.entity")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
-        @Argument(value = { "p", "performer" })
+        @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument(value = { "w", "world" })
-        @Argument(value = { "e", "entity", "type" })
-        @Argument(value = { "l", "player" })
+        @Argument({ "w", "world" })
+        @Argument({ "e", "entity", "type" })
+        @Argument({ "l", "player" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -248,7 +310,7 @@ public final class Commands implements BaseCommand {
         }
     }
 
-    private void processQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {
+    private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final CommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");

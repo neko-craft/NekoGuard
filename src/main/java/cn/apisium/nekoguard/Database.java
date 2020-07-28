@@ -14,12 +14,13 @@ public final class Database {
     protected final String database;
 
     @SuppressWarnings("deprecation")
-    Database(final String database, final String url, final String name, final String password) {
+    Database(final String database, final String url, final String name, final String password, final String retentionPolicy) {
         instance = name == null || name.equals("") ? InfluxDBFactory.connect(url) : InfluxDBFactory.connect(url, name, password);
         if (!instance.databaseExists(database)) instance.createDatabase(database);
         this.database = database;
         instance.setDatabase(database);
         instance.setConsistency(InfluxDB.ConsistencyLevel.ALL);
+        if (!retentionPolicy.isEmpty()) instance.setRetentionPolicy(retentionPolicy);
         instance.enableBatch();
     }
 

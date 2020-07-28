@@ -2,7 +2,6 @@ package cn.apisium.nekoguard;
 
 import cn.apisium.nekocommander.Commander;
 import org.bukkit.entity.Player;
-import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.annotation.command.Command;
 import org.bukkit.plugin.java.annotation.command.Commands;
@@ -19,7 +18,20 @@ import java.util.*;
 @Website("https://apisium.cn")
 @ApiVersion(ApiVersion.Target.v1_13)
 @Commands(@Command(name = "nekoguard", permission = "nekoguard.use", aliases = { "ng" }))
-@Permissions(@Permission(name = "nekoguard.use", defaultValue = PermissionDefault.TRUE))
+@Permissions({
+    @Permission(name = "nekoguard.inspect"),
+    @Permission(name = "nekoguard.lookup.chat"),
+    @Permission(name = "nekoguard.lookup.command"),
+    @Permission(name = "nekoguard.lookup.item"),
+    @Permission(name = "nekoguard.lookup.block"),
+    @Permission(name = "nekoguard.lookup.death"),
+    @Permission(name = "nekoguard.lookup.container"),
+    @Permission(name = "nekoguard.fetch.action"),
+    @Permission(name = "nekoguard.fetch.container"),
+    @Permission(name = "nekoguard.rollback.block"),
+    @Permission(name = "nekoguard.rollback.container"),
+    @Permission(name = "nekoguard.rollback.entity")
+})
 public final class Main extends JavaPlugin {
     private Database db;
     private API api;
@@ -46,7 +58,8 @@ public final class Main extends JavaPlugin {
                 Objects.requireNonNull(getConfig().getString("database")),
                 url,
                 getConfig().getString("username"),
-                getConfig().getString("password", "")
+                getConfig().getString("password", ""),
+                getConfig().getString("retentionPolicy", "")
         );
         api = new API(Objects.requireNonNull(getConfig().getString("measurementPrefix")), this);
         messages = new Messages(api, db);
@@ -56,6 +69,9 @@ public final class Main extends JavaPlugin {
             .setDefaultUsage("¡ìcÖ¸ÁîÓÃ·¨´íÎó!")
             .registerCommand(new cn.apisium.nekoguard.Commands(this));
         getServer().getPluginManager().registerEvents(new Events(this), this);
+
+        if (Constants.IS_PAPER) getServer().getScheduler().runTaskTimerAsynchronously(this,
+            () -> inspecting.forEach(it -> it.sendActionBar(Constants.IN_INSPECTING)), 20, 20);
     }
 
     @Override
@@ -71,11 +87,4 @@ public final class Main extends JavaPlugin {
     public API getApi() { return api; }
 
     public static Main getInstance() { return INSTANCE; }
-
-//    @Nullable
-//    @Override
-//    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull org.bukkit.command.Command command, @NotNull String alias, @NotNull String[] args) {
-//        if (args.length != 0) sender.sendMessage(args[args.length - 1]);
-//        return null;
-//    }
 }

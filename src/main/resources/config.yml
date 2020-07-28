@@ -3,6 +3,7 @@ username: ''
 password: ''
 database: 'NekoGuard'
 measurementPrefix: ''
+retentionPolicy: ''
 
 commandActionHistoryCount: 6
 recordMonsterKilledWithoutCustomName: false

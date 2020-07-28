@@ -154,19 +154,21 @@ public final class Messages {
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
+                final boolean canCopy = sender.hasPermission("nekoguard.fetch.container");
                 try {
                     for (final Object[] arr : mapper.all()) {
                         final TextComponent t = new TextComponent((String) arr[2]);
                         t.setColor(ChatColor.GRAY);
                         final boolean isAdd = Utils.isAddContainerAction(arr, world, x, y, z);
+                        final String time = (String) arr[0];
                         sender.spigot().sendMessage(
-                            Utils.getContainerActionComponent(isAdd, world, x, y, z),
-                            Utils.getItemStackDetails((String) arr[1]),
+                            Utils.getBlockActionComponent(isAdd, world, x, y, z),
+                            Utils.getItemStackDetails((String) arr[1], canCopy ? "/ng fetch container " + time : null),
                             Constants.SPACE,
                             isAdd
                                 ? Utils.getContainerPerformerName((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6])
                                 : Utils.getContainerPerformerName((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]),
-                            Utils.getTimeComponent((String) arr[0], now)
+                            Utils.getTimeComponent(time, now)
                         );
                     }
                 } catch (Exception e) {
@@ -190,19 +192,21 @@ public final class Messages {
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
+                final boolean canCopy = sender.hasPermission("nekoguard.fetch.container");
                 try {
                     for (final Object[] arr : mapper.all()) {
                         final TextComponent t = new TextComponent((String) arr[2]);
                         t.setColor(ChatColor.GRAY);
                         final boolean isAdd = arr[7].equals(entity);
+                        final String time = (String) arr[0];
                         sender.spigot().sendMessage(
                             Utils.getContainerActionComponent(isAdd, entity),
-                            Utils.getItemStackDetails((String) arr[1]),
+                            Utils.getItemStackDetails((String) arr[1], canCopy ? "/ng fetch container " + time : null),
                             Constants.SPACE,
                             isAdd
                                 ? Utils.getContainerPerformerName((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6])
                                 : Utils.getContainerPerformerName((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]),
-                            Utils.getTimeComponent((String) arr[0], now)
+                            Utils.getTimeComponent(time, now)
                         );
                     }
                 } catch (Exception e) {
@@ -227,11 +231,13 @@ public final class Messages {
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
+                final boolean canCopy = sender.hasPermission("nekoguard.fetch.container");
                 try {
                     for (final Object[] arr : mapper.all()) {
+                        final String time = (String) arr[0];
                         sender.spigot().sendMessage(
-                            Utils.getTimeComponent((String) arr[0], now),
-                            Utils.getItemStackDetails((String) arr[1]),
+                            Utils.getTimeComponent(time, now),
+                            Utils.getItemStackDetails((String) arr[1], canCopy ? "/ng fetch container " + time : null),
                             Constants.SPACE,
                             Utils.getContainerPerformerNameRoughly((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6]),
                             Constants.LEFT_ARROW,
@@ -321,5 +327,38 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+    }
+
+    public void sendItemActionMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        Objects.requireNonNull(sender);
+        final SelectQueryImpl q1 = api.queryItemActionCount(), q2 = api.queryItemAction(page);
+        if (fn != null) {
+            fn.accept(q1);
+            fn.accept(q2);
+        }
+        db.query(q1, Utils.getCountConsumer(all -> db.query(q2, res -> {
+            final QueryResult.Series data = Utils.getFirstResult(res);
+            if (data == null) return;
+            final SeriesMapper.Mapper mapper = Mappers.ITEM_ACTIONS.parse(data);
+            sender.sendMessage(Constants.HEADER);
+            final long now = Instant.now().toEpochMilli();
+            final boolean canCopy = sender.hasPermission("nekoguard.fetch.action");
+            try {
+                for (final Object[] arr : mapper.all()) {
+                    final String time = (String) arr[0];
+                    sender.spigot().sendMessage(
+                        Utils.getBlockActionComponent("1".equals(arr[2]), (String) arr[4], ((Double) arr[5]).intValue(),
+                            ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
+                        Utils.getItemStackDetails((String) arr[3], canCopy ? "/ng fetch action " + time : null),
+                        Constants.SPACE,
+                        Utils.getPlayerPerformerNameComponent((String) arr[1], true),
+                        Utils.getTimeComponent(time, now)
+                    );
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            sender.spigot().sendMessage(Constants.makeFooter(page, all));
+        })));
     }
 }

@@ -2,6 +2,7 @@ package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.CommandSenderType;
 import cn.apisium.nekoguard.utils.Utils;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
 import org.bukkit.command.*;
@@ -13,15 +14,10 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryMoveItemEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.server.ServerCommandEvent;
-import org.bukkit.event.vehicle.VehicleCreateEvent;
-import org.bukkit.event.vehicle.VehicleDamageEvent;
-import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.vehicle.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -261,5 +257,20 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntitySpawn(final VehicleCreateEvent e) {
         api.recordSpawn(e.getVehicle(), Constants.IS_PAPER ? e.getVehicle().getEntitySpawnReason().name() : null);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerDropItem(final PlayerDropItemEvent e) {
+        final Item item = e.getItemDrop();
+        final Location loc = item.getLocation();
+        api.recordItemAction(item.getItemStack(), true, e.getPlayer().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerDropItem(final EntityPickupItemEvent e) {
+        if (e.getEntityType() != EntityType.PLAYER) return;
+        final Item item = e.getItem();
+        final Location loc = item.getLocation();
+        api.recordItemAction(item.getItemStack(), false, e.getEntity().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
     }
 }

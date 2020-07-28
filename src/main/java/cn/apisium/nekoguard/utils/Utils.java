@@ -14,7 +14,6 @@ import org.bukkit.block.TileState;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityDamageByBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -124,7 +123,7 @@ public final class Utils {
     public static TextComponent getPlayerPerformerNameComponent(@NotNull final String performer, final boolean pad) {
         final String name = getPlayerName(performer);
         final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
-        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, name));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, performer));
         t.setHoverEvent(genTextHoverEvent(performer));
         return t;
     }
@@ -278,7 +277,7 @@ public final class Utils {
     }
 
     @NotNull
-    public static BaseComponent getItemStackDetails(@NotNull final String data) {
+    public static BaseComponent getItemStackDetails(@NotNull final String data, @Nullable final String cmd) {
         final ItemStackParser p = new ItemStackParser(data);
         final TextComponent t;
         if (p.name == null){
@@ -300,6 +299,7 @@ public final class Utils {
         }
         t.setHoverEvent(genItemHoverEvent(data));
         t.setColor(ChatColor.LIGHT_PURPLE);
+        if (cmd != null) t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
         return t;
     }
 
@@ -383,15 +383,6 @@ public final class Utils {
         final TextComponent t = getAddOrRemoveActionComponent(isAdd);
         t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + entity));
         t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + entity));
-        return t;
-    }
-
-    @NotNull
-    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
-        final TextComponent t = getAddOrRemoveActionComponent(isAdd);
-        final String loc = " " + x + " " + y + " " + z;
-        t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + world + loc));
-        t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp" + loc));
         return t;
     }
 

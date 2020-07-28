@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
+import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
@@ -32,6 +34,7 @@ public final class API {
     private final String spawnRecords;
     private final String commandRecords;
     private final String containerRecords;
+    private final String itemsRecords;
     private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
@@ -44,6 +47,7 @@ public final class API {
         commandRecords = prefix + "Commands";
         deathRecords = prefix + "Deaths";
         spawnRecords = prefix + "Spawns";
+        itemsRecords = prefix + "Items";
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -111,6 +115,20 @@ public final class API {
         db.write(Point.measurement(commandRecords)
             .tag("type", performer)
             .addField("command", command)
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordItemAction(@NotNull final ItemStack is, final boolean isDrop, @NotNull final String performer, @NotNull final String world, final double x, final double y, final double z) {
+        db.write(Point.measurement(itemsRecords)
+            .tag("performer", performer)
+            .tag("world", world)
+            .tag("action", isDrop ? "0" : "1")
+            .addField("item", NMSUtils.serializeItemStack(is))
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -219,16 +237,12 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl queryBlock() {
-        return select()
-            .from(db.database, blockRecords)
-            .orderBy(desc());
+        return select().from(db.database, blockRecords).orderBy(desc());
     }
 
     @NotNull
     public SelectQueryImpl queryBlockCount() {
-        return select()
-            .countAll()
-            .from(db.database, blockRecords);
+        return select().countAll().from(db.database, blockRecords);
     }
 
     @NotNull
@@ -239,9 +253,7 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl queryChat(@Nullable final String player, final int page) {
-        final SelectQueryImpl query = select()
-            .from(db.database, chatRecords)
-            .orderBy(desc());
+        final SelectQueryImpl query = select().from(db.database, chatRecords).orderBy(desc());
         if (player == null) return page == 0 ? query.limit(10) : query.limit(10, page * 10);
         else {
             final WhereQueryImpl<?> query2 = query.where(eq("player", player));
@@ -279,16 +291,12 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl queryContainerActions() {
-        return select()
-            .from(db.database, containerRecords)
-            .orderBy(desc());
+        return select().from(db.database, containerRecords).orderBy(desc());
     }
 
     @NotNull
     public SelectQueryImpl queryContainerActionsCount() {
-        return select()
-            .countAll()
-            .from(db.database, containerRecords);
+        return select().countAll().from(db.database, containerRecords);
     }
     @NotNull
     public SelectQueryImpl queryContainerActions(final int page) {
@@ -298,9 +306,7 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl queryCommand(@Nullable final String type, final int page) {
-        final SelectQueryImpl query = select()
-            .from(db.database, commandRecords)
-            .orderBy(desc());
+        final SelectQueryImpl query = select().from(db.database, commandRecords).orderBy(desc());
         if (type == null) return page == 0 ? query.limit(10) : query.limit(10, page * 10);
         else {
             final WhereQueryImpl<?> query2 = query.where(eq("type", type));
@@ -316,16 +322,12 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl queryDeath() {
-        return select()
-            .from(db.database, deathRecords)
-            .orderBy(desc());
+        return select().from(db.database, deathRecords).orderBy(desc());
     }
 
     @NotNull
     public SelectQueryImpl queryDeathCount() {
-        return select()
-            .countAll()
-            .from(db.database, deathRecords);
+        return select().countAll().from(db.database, deathRecords);
     }
 
     @NotNull
@@ -345,20 +347,55 @@ public final class API {
 
     @NotNull
     public SelectQueryImpl querySpawn() {
-        return select()
-            .from(db.database, spawnRecords)
-            .orderBy(desc());
+        return select().from(db.database, spawnRecords).orderBy(desc());
     }
 
     @NotNull
     public SelectQueryImpl querySpawnCount() {
-        return select()
-            .countAll()
-            .from(db.database, spawnRecords);
+        return select().countAll().from(db.database, spawnRecords);
     }
     @NotNull
     public SelectQueryImpl querySpawn(final int page) {
         final SelectQueryImpl query = querySpawn();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
+    }
+
+    @NotNull
+    public SelectQueryImpl queryItemAction() {
+        return select().from(db.database, itemsRecords).orderBy(desc());
+    }
+
+    @NotNull
+    public SelectQueryImpl queryItemActionCount() {
+        return select().countAll().from(db.database, itemsRecords);
+    }
+    @NotNull
+    public SelectQueryImpl queryItemAction(final int page) {
+        final SelectQueryImpl query = queryItemAction();
+        return page == 0 ? query.limit(10) : query.limit(10, page * 10);
+    }
+
+    public void fetchActionItemIntoInventory(@NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
+        fetchItemIntoInventory(itemsRecords, inv, time, callback);
+    }
+    public void fetchContainerItemIntoInventory(@NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
+        fetchItemIntoInventory(containerRecords, inv, time, callback);
+    }
+    public void fetchItemIntoInventory(@NotNull final String table, @NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
+        db.query(select("item").from(db.database, table).where(eq("time", time)), res -> {
+            final QueryResult.Series data = Utils.getFirstResult(res);
+            if (data == null || data.getValues().size() == 0) {
+                if (callback != null) callback.accept(false);
+                return;
+            }
+            final ItemStack is = NMSUtils.deserializeItemStack((String) data.getValues().get(0)
+                .get("item".equals(data.getColumns().get(0)) ? 0 : 1));
+            if (is == null) {
+                if (callback != null) callback.accept(false);
+            } else {
+                inv.addItem(is);
+                if (callback != null) callback.accept(true);
+            }
+        });
     }
 }
