@@ -1,7 +1,9 @@
 package cn.apisium.nekoguard;
 
+import cn.apisium.nekoguard.utils.Utils;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryType;
@@ -11,14 +13,17 @@ public final class Constants {
     public static final String TILE = "§TILE§";
     public static final String PLAYER_NOT_EXISTS = "§e[NekoGuard] §c该玩家还从未在本服务器游玩过!";
     public static final String BLOCK_ACTION_BREAK = "0", BLOCK_ACTION_PLACE = "1";
-    public static final String HEADER = "§b§m                     §r §e[NekoGuard] §b§m                     ";
+    public static final String HEADER = "§b§m                     §r §e[NekoGuard] §b§m                     ",
+        FOOTER = "§b§m                                                           ";
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
     public static final String TP_MESSAGE = "§a点击立即传送到: §f";
     public static final TextComponent UNKNOWN = new TextComponent("未知"), SPACE = new TextComponent("  "),
         LEFT_ARROW = new TextComponent(" → ");
     public static final String SUCCESS = "§e[NekoGuard] §a操作成功!", FAILED = "§e[NekoGuard] §c操作失败!";
     public static final String IN_INSPECTING = "§e[NekoGuard] §b您当前正处于审查模式!";
+    public static final String NO_RECORDS = "§e[NekoGuard] §c当前没有任何记录!";
     public static final String ENTITY_ATTACK = EntityDamageEvent.DamageCause.ENTITY_ATTACK.name();
+    public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("§c点击这里将会直接撤销操作!");
 
     static {
         UNKNOWN.setColor(ChatColor.GRAY);

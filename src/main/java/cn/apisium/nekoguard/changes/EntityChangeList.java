@@ -5,17 +5,18 @@ import cn.apisium.nekoguard.Main;
 import cn.apisium.nekoguard.mappers.SeriesMapper;
 import cn.apisium.nekoguard.utils.NMSUtils;
 import org.bukkit.*;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
 public final class EntityChangeList extends ChangeList {
+    private final ArrayList<Entity> spawned = new ArrayList<>(mapper.count);
     private static final HashMap<String, Class<? extends Entity>> ENTITY_TYPES = new HashMap<>(EntityType.values().length);
     static {
         for (final EntityType type : EntityType.values()) if (type != EntityType.UNKNOWN)
@@ -27,7 +28,7 @@ public final class EntityChangeList extends ChangeList {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public void doChange(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback) {
+    public void doChange(@Nullable final Consumer<ChangeList> callback) {
         final Iterator<Object[]> iterator = mapper.all().iterator();
         Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
             int i = 0;
@@ -44,9 +45,11 @@ public final class EntityChangeList extends ChangeList {
                     failedCount++;
                     continue;
                 }
-                NMSUtils.loadEntityData(Constants.IS_PAPER
+                final Entity entity = Constants.IS_PAPER
                     ? world.spawn(new Location(world, (Double) arr[6], (Double) arr[7], (Double) arr[8]), clazz, (org.bukkit.util.Consumer) null)
-                    : world.spawn(new Location(world, (Double) arr[6], (Double) arr[7], (Double) arr[8]), clazz), (String) arr[3]);
+                    : world.spawn(new Location(world, (Double) arr[6], (Double) arr[7], (Double) arr[8]), clazz);
+                NMSUtils.loadEntityData(entity, (String) arr[3]);
+                spawned.add(entity);
             }
             if (!iterator.hasNext()) {
                 it.cancel();
@@ -56,7 +59,20 @@ public final class EntityChangeList extends ChangeList {
     }
 
     @Override
-    public void undo(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback) {
+    public void undo(@Nullable final Consumer<ChangeList> callback) {
+        final Iterator<Entity> iterator = spawned.iterator();
+        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+            int i = 0;
+            while (iterator.hasNext() && i++ < 50000) iterator.next().remove();
+            if (!iterator.hasNext()) {
+                it.cancel();
+                if (callback != null) callback.accept(this);
+            }
+        }, 0, 2);
+    }
 
+    @Override
+    public @NotNull String getName() {
+        return "EntityChange";
     }
 }

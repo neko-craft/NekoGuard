@@ -9,6 +9,9 @@ import cn.apisium.nekoguard.utils.Completes;
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import cn.apisium.nekoguard.utils.Utils;
 import joptsimple.OptionSet;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
@@ -20,6 +23,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.function.Consumer;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
@@ -54,10 +59,53 @@ public final class Commands implements BaseCommand {
     public boolean page(@NotNull final CommandSender sender, @NotNull final String[] args) {
         if (args.length != 1) return false;
         final Consumer<Integer> fn = main.commandHistories.get(sender);
-        if (fn == null) sender.sendMessage("§c当前没有任何命令记录!");
+        if (fn == null) sender.sendMessage(Constants.NO_RECORDS);
         else try {
             fn.accept(Integer.parseInt(args[0]));
         } catch (final Exception ignored) { return false; }
+        return true;
+    }
+
+    @Command("undo")
+    public boolean undo(@NotNull final CommandSender sender, @NotNull final String[] args) {
+        final LinkedList<ChangeList> list = main.commandActions.get(sender);
+        if (list == null || list.isEmpty()) {
+            sender.sendMessage(Constants.NO_RECORDS);
+            return true;
+        }
+        sender.sendMessage(String.join(" ", args));
+        if (args.length == 1) try {
+            final int index = Integer.parseInt(args[0]);
+            final ChangeList change = list.get(index);
+            if (change == null) sender.sendMessage(Constants.NO_RECORDS);
+            else {
+                change.undo(it -> {
+                    sender.sendMessage(Constants.SUCCESS);
+                    list.remove(change);
+                });
+            }
+        } catch (final Exception ignored) {
+            return false;
+        } else {
+            sender.sendMessage(Constants.HEADER);
+            final Iterator<ChangeList> iterator = list.iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                final TextComponent redo = new TextComponent("[撤销]");
+                redo.setColor(ChatColor.RED);
+                redo.setHoverEvent(Constants.REDO_HOVER);
+                redo.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/nekoguard undo " + i));
+                final TextComponent t = new TextComponent(" " + ++i + ". ");
+                t.setColor(ChatColor.GRAY);
+                sender.spigot().sendMessage(
+                    Constants.SPACE,
+                    redo,
+                    t,
+                    new TextComponent(iterator.next().getName())
+                );
+            }
+            sender.sendMessage(Constants.FOOTER);
+        }
         return true;
     }
 
@@ -200,6 +248,7 @@ public final class Commands implements BaseCommand {
                 return false;
             }
         }
+
         @Command("container")
         @Permission("nekoguard.fetch.container")
         public boolean fetchContainerItem(final @NotNull Player sender, @NotNull final String[] args) {
@@ -236,10 +285,13 @@ public final class Commands implements BaseCommand {
                     regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
-                    if (data == null) return;
+                    if (data == null) {
+                        sender.sendMessage(Constants.NO_RECORDS);
+                        return;
+                    }
                     final BlockChangeList list = new BlockChangeList(Mappers.BLOCKS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(sender, it -> sender.sendMessage("Success"));
+                    list.doChange(it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -273,10 +325,13 @@ public final class Commands implements BaseCommand {
                 processContainerQuery(result, query, sender, true);
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
-                    if (data == null) return;
+                    if (data == null) {
+                        sender.sendMessage(Constants.NO_RECORDS);
+                        return;
+                    }
                     final ContainerChangeList list = new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(sender, it -> sender.sendMessage("Success"));
+                    list.doChange(it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -308,10 +363,13 @@ public final class Commands implements BaseCommand {
                 processQuery(result, query, sender, true);
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
-                    if (data == null) return;
+                    if (data == null) {
+                        sender.sendMessage(Constants.NO_RECORDS);
+                        return;
+                    }
                     final EntityChangeList list = new EntityChangeList(Mappers.DEATHS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(sender, it -> sender.sendMessage("Success"));
+                    list.doChange(it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();

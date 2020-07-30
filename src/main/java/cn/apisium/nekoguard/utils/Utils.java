@@ -189,6 +189,19 @@ public final class Utils {
         return str;
     }
 
+    @NotNull
+    public static String getFullBlockDataTemp(@NotNull final BlockState block) {
+        String str = block.getBlockData().getAsString();
+        if (block instanceof TileState) {
+            final String s = NMSUtils.serializeTileEntity(block);
+            if (s != null) {
+                str += Constants.TILE;
+                str += s;
+            }
+        }
+        return str;
+    }
+
     public static void patchDataToBlock(@NotNull final Block block, @NotNull final String data) {
         final String[] arr = data.split(Constants.TILE, 2);
         block.setBlockData(Bukkit.createBlockData(arr[0]));

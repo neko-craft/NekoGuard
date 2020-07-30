@@ -53,7 +53,10 @@ public final class Messages {
         }
         db.query(q1, Utils.getCountConsumer(all -> db.query(q2, res -> {
             final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null) return;
+            if (data == null) {
+                sender.sendMessage(Constants.NO_RECORDS);
+                return;
+            }
             final SeriesMapper.Mapper mapper = Mappers.COMMANDS.parse(data);
             sender.sendMessage(Constants.HEADER);
             final long now = Instant.now().toEpochMilli();
@@ -81,7 +84,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.BLOCKS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -129,7 +135,10 @@ public final class Messages {
         }
         db.query(q1, Utils.getCountConsumer(all -> db.query(q2, res -> {
             final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null) return;
+            if (data == null) {
+                sender.sendMessage(Constants.NO_RECORDS);
+                return;
+            }
             final SeriesMapper.Mapper mapper = Mappers.CHATS.parse(data);
             sender.sendMessage(Constants.HEADER);
             final long now = Instant.now().toEpochMilli();
@@ -157,7 +166,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -196,7 +208,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -236,7 +251,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.CONTAINER_ACTIONS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -272,7 +290,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.DEATHS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -316,7 +337,10 @@ public final class Messages {
         db.query(q1, Utils.getCountConsumer(all ->
             db.query(q2, res -> {
                 final QueryResult.Series data = Utils.getFirstResult(res);
-                if (data == null) return;
+                if (data == null) {
+                    sender.sendMessage(Constants.NO_RECORDS);
+                    return;
+                }
                 final SeriesMapper.Mapper mapper = Mappers.SPAWNS.parse(data);
                 sender.sendMessage(Constants.HEADER);
                 final long now = Instant.now().toEpochMilli();
@@ -350,7 +374,10 @@ public final class Messages {
         }
         db.query(q1, Utils.getCountConsumer(all -> db.query(q2, res -> {
             final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null) return;
+            if (data == null) {
+                sender.sendMessage(Constants.NO_RECORDS);
+                return;
+            }
             final SeriesMapper.Mapper mapper = Mappers.ITEM_ACTIONS.parse(data);
             sender.sendMessage(Constants.HEADER);
             final long now = Instant.now().toEpochMilli();

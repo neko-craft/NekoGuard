@@ -2,7 +2,6 @@ package cn.apisium.nekoguard;
 
 import cn.apisium.nekocommander.Commander;
 import cn.apisium.nekoguard.changes.ChangeList;
-import com.google.common.collect.EvictingQueue;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,7 +15,6 @@ import org.bukkit.plugin.java.annotation.plugin.author.Author;
 import java.util.*;
 import java.util.function.Consumer;
 
-@SuppressWarnings("UnstableApiUsage")
 @Plugin(name = "NekoGuard", version = "1.0")
 @Description("An essential plugin used in NekoCraft.")
 @Author("Shirasawa")
@@ -42,10 +40,10 @@ public final class Main extends JavaPlugin {
     private API api;
     private Messages messages;
     private static Main INSTANCE;
-    protected int commandActionHistoryCount = 6;
+    protected int commandActionHistoryCount = 3;
     protected boolean recordMonsterKilledWithoutCustomName = false;
     public final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
-    public final WeakHashMap<CommandSender, EvictingQueue<ChangeList>> commandActions = new WeakHashMap<>();
+    public final WeakHashMap<CommandSender, LinkedList<ChangeList>> commandActions = new WeakHashMap<>();
     public final WeakHashMap<CommandSender, Consumer<Integer>> commandHistories = new WeakHashMap<>();
 
     { INSTANCE = this; }
@@ -59,7 +57,7 @@ public final class Main extends JavaPlugin {
             setEnabled(false);
             return;
         }
-        commandActionHistoryCount = getConfig().getInt("commandActionHistoryCount", 6);
+        commandActionHistoryCount = getConfig().getInt("commandActionHistoryCount", 3);
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
         db = new Database(
                 Objects.requireNonNull(getConfig().getString("database")),
@@ -96,7 +94,9 @@ public final class Main extends JavaPlugin {
     public static Main getInstance() { return INSTANCE; }
 
     public void addCommandAction(final CommandSender sender, final ChangeList list) {
-        commandActions.computeIfAbsent(sender, it -> EvictingQueue.create(commandActionHistoryCount)).add(list);
+        final LinkedList<ChangeList> actions = commandActions.computeIfAbsent(sender, it -> new LinkedList<>());
+        if (actions.size() >= commandActionHistoryCount) actions.removeLast();
+        actions.addFirst(list);
     }
 
     public void addCommandHistory(final CommandSender sender, final Consumer<Integer> fn) {

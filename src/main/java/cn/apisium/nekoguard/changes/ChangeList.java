@@ -21,11 +21,14 @@ public abstract class ChangeList {
         allCount = count;
     }
 
-    public abstract void doChange(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback);
+    public abstract void doChange(@Nullable final Consumer<ChangeList> callback);
     @SuppressWarnings("unused")
-    public abstract void undo(@NotNull final CommandSender sender, @Nullable final Consumer<ChangeList> callback);
+    public abstract void undo(@Nullable final Consumer<ChangeList> callback);
 
     public int getFailed() { return failedCount; }
     public int getAllCount() { return allCount; }
     public int getSuccessCount() { return successCount; }
+
+    @NotNull
+    public abstract String getName();
 }

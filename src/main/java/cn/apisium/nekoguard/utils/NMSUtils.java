@@ -39,9 +39,15 @@ public final class NMSUtils {
 
     @Nullable
     public static String serializeTileEntity(@NotNull final BlockState s) {
+        final Object data = getTileEntity(s);
+        return data == null ? null : data.toString();
+    }
+
+    @Nullable
+    public static Object getTileEntity(@NotNull final BlockState s) {
         if (!craftBlockEntityStateClass.isInstance(s)) return null;
         try {
-            return tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance()).toString();
+            return tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance());
         } catch (final Exception e) {
             Utils.throwSneaky(e);
             throw new RuntimeException();
@@ -109,6 +115,19 @@ public final class NMSUtils {
             final Object tile = getTileEntity.invoke(state);
             tileEntityLoad.invoke(tile, craftBlockDataGetState.invoke(block.getBlockData()),
                 nbtParserParse.invoke(null, data));
+            tileEntityUpdate.invoke(tile);
+        } catch (Exception e) {
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
+        }
+    }
+
+    public static void loadTileStateData(@NotNull final Block block, @NotNull final Object data) {
+        final BlockState state = block.getState();
+        if (!craftBlockEntityStateClass.isInstance(state)) return;
+        try {
+            final Object tile = getTileEntity.invoke(state);
+            tileEntityLoad.invoke(tile, craftBlockDataGetState.invoke(block.getBlockData()), data);
             tileEntityUpdate.invoke(tile);
         } catch (Exception e) {
             Utils.throwSneaky(e);

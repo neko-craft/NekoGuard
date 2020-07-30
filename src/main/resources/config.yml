@@ -5,5 +5,5 @@ database: 'NekoGuard'
 measurementPrefix: ''
 retentionPolicy: ''
 
-commandActionHistoryCount: 6
+commandActionHistoryCount: 3
 recordMonsterKilledWithoutCustomName: false
