@@ -122,9 +122,14 @@ public final class Utils {
     @NotNull
     public static TextComponent getPlayerPerformerNameComponent(@NotNull final String performer, final boolean pad) {
         final String name = getPlayerName(performer);
+        return getPlayerNameComponentWithUUID(name, performer, pad);
+    }
+
+    @NotNull
+    public static TextComponent getPlayerNameComponentWithUUID(@NotNull final String name, @NotNull final String id, final boolean pad) {
         final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
-        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, performer));
-        t.setHoverEvent(genTextHoverEvent(performer));
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id));
+        t.setHoverEvent(genTextHoverEvent(id));
         return t;
     }
 
@@ -178,19 +183,6 @@ public final class Utils {
 
     @NotNull
     public static String getFullBlockData(@NotNull final BlockState block) {
-        String str = block.getBlockData().getAsString();
-        if (block instanceof TileState) {
-            final String s = NMSUtils.serializeTileEntity(block);
-            if (s != null) {
-                str += Constants.TILE;
-                str += s;
-            }
-        }
-        return str;
-    }
-
-    @NotNull
-    public static String getFullBlockDataTemp(@NotNull final BlockState block) {
         String str = block.getBlockData().getAsString();
         if (block instanceof TileState) {
             final String s = NMSUtils.serializeTileEntity(block);
@@ -364,7 +356,7 @@ public final class Utils {
     }
 
     @NotNull
-    public static TextComponent getBlockActionComponent(final boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
+    public static TextComponent getActionComponentOfLocation(final boolean isAdd, @NotNull final String world, final int x, final int y, final int z) {
         final TextComponent t = getAddOrRemoveActionComponent(isAdd);
         processActionComponent(t, world, x, y, z);
         return t;
@@ -392,7 +384,7 @@ public final class Utils {
     }
 
     @NotNull
-    public static TextComponent getContainerActionComponent(boolean isAdd, @NotNull final String entity) {
+    public static TextComponent getActionComponentOfEntity(boolean isAdd, @NotNull final String entity) {
         final TextComponent t = getAddOrRemoveActionComponent(isAdd);
         t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + entity));
         t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + entity));
@@ -468,5 +460,14 @@ public final class Utils {
         t.setColor(ChatColor.GRAY);
         t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, text));
         return t;
+    }
+
+    @Nullable
+    public static String getPlayerUUIDByName(final @Nullable String name, final @NotNull CommandSender sender) {
+        if (name == null || name.length() == 36) return name;
+        final OfflinePlayer p = Bukkit.getOfflinePlayer(name);
+        if (p.hasPlayedBefore()) return p.getUniqueId().toString();
+        sender.sendMessage(Constants.PLAYER_NOT_EXISTS);
+        return null;
     }
 }

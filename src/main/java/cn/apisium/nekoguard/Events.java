@@ -255,7 +255,7 @@ public final class Events implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEntitySpawn(final VehicleCreateEvent e) {
+    public void onVehicleCreate(final VehicleCreateEvent e) {
         api.recordSpawn(e.getVehicle(), Constants.IS_PAPER ? e.getVehicle().getEntitySpawnReason().name() : null);
     }
 
@@ -267,10 +267,20 @@ public final class Events implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerDropItem(final EntityPickupItemEvent e) {
+    public void onEntityPickupItem(final EntityPickupItemEvent e) {
         if (e.getEntityType() != EntityType.PLAYER) return;
         final Item item = e.getItem();
         final Location loc = item.getLocation();
         api.recordItemAction(item.getItemStack(), false, e.getEntity().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerJoin(final PlayerJoinEvent e) {
+        api.recordPlayerSession(e.getPlayer(), true);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerQuit(final PlayerQuitEvent e) {
+        api.recordPlayerSession(e.getPlayer(), false);
     }
 }

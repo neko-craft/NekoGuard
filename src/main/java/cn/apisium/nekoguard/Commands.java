@@ -134,6 +134,31 @@ public final class Commands implements BaseCommand {
                 time == null ? null : it -> it.where(new SimpleTimeClause(time)));
         }
 
+        @Command("session")
+        @Permission("nekoguard.lookup.session")
+        @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
+        @Argument(value = "x", type = Integer.class)
+        @Argument(value = "y", type = Integer.class)
+        @Argument(value = "z", type = Integer.class)
+        public void lookupSessions(
+            @NotNull final CommandSender sender,
+            @Nullable @Argument({ "t", "time" }) final String time,
+            @Nullable @Argument(value = { "p", "player" }, completer = PlayersCompleter.class) String player,
+            @Nullable @Argument(value = { "n", "name" }, completer = PlayersCompleter.class) final String name,
+            @Nullable @Argument(value = "near", type = Boolean.class) final Boolean near,
+            @NotNull final OptionSet result
+        ) {
+            messages.sendSessionMessage(sender, 0, it -> {
+                final WhereQueryImpl<SelectQueryImpl> query = it.where();
+                if (time != null) query.and(new SimpleTimeClause(time));
+                if (name != null) query.and(eq("name", name));
+                final String id = Utils.getPlayerUUIDByName(player, sender);
+                if (id != null) query.and(eq("id", id));
+                if (near != null && near) processLocationQuery(result, query, sender);
+            });
+        }
+
         @Command("item")
         @Permission("nekoguard.lookup.item")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
@@ -377,6 +402,29 @@ public final class Commands implements BaseCommand {
         }
     }
 
+    private void processLocationQuery(@NotNull final OptionSet cmd, final WhereQueryImpl<SelectQueryImpl> q, @NotNull final CommandSender sender) {
+        Integer lx = (Integer) cmd.valueOf("x"),
+            ly = (Integer) cmd.valueOf("y"),
+            lz = (Integer) cmd.valueOf("z"),
+            r = (Integer) ObjectUtils.defaultIfNull(cmd.valueOf("radius"), 5);
+        String world = (String) cmd.valueOf("world");
+        if (world == null) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("请提供查询位置!");
+                throw Constants.IGNORED_ERROR;
+            }
+            final Location loc = ((Player) sender).getLocation();
+            world = loc.getWorld().getName();
+            lx = loc.getBlockX();
+            ly = loc.getBlockY();
+            lz = loc.getBlockZ();
+        }
+        q.andNested().and(eq("world", world))
+            .and(gte("x", lx - r)).and(lte("x", lx + r))
+            .and(gte("y", ly - r)).and(lte("y", ly + r))
+            .and(gte("z", lz - r)).and(lte("z", lz + r)).close();
+    }
+
     private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final CommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
@@ -389,28 +437,7 @@ public final class Commands implements BaseCommand {
         }
         if (cmd.has("performer")) query.and(eq("performer",
             Utils.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
-        if (!cmd.has("global")) {
-            Integer lx = (Integer) cmd.valueOf("x"),
-                ly = (Integer) cmd.valueOf("y"),
-                lz = (Integer) cmd.valueOf("z"),
-                r = (Integer) ObjectUtils.defaultIfNull(cmd.valueOf("radius"), 5);
-            String world = (String) cmd.valueOf("world");
-            if (world == null) {
-                if (!(sender instanceof Player)) {
-                    sender.sendMessage("请提供查询位置!");
-                    throw Constants.IGNORED_ERROR;
-                }
-                final Location loc = ((Player) sender).getLocation();
-                world = loc.getWorld().getName();
-                lx = loc.getBlockX();
-                ly = loc.getBlockY();
-                lz = loc.getBlockZ();
-            }
-            query.and(eq("world", world))
-                .and(gte("x", lx - r)).and(lte("x", lx + r))
-                .and(gte("y", ly - r)).and(lte("y", ly + r))
-                .and(gte("z", lz - r)).and(lte("z", lz + r));
-        }
+        if (!cmd.has("global")) processLocationQuery(cmd, query, sender);
     }
 
     private void processContainerQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {

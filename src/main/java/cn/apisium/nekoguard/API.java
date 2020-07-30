@@ -35,6 +35,7 @@ public final class API {
     private final String commandRecords;
     private final String containerRecords;
     private final String itemsRecords;
+    private final String sessionsRecords;
     private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
@@ -48,6 +49,7 @@ public final class API {
         deathRecords = prefix + "Deaths";
         spawnRecords = prefix + "Spawns";
         itemsRecords = prefix + "Items";
+        sessionsRecords = prefix + "Sessions";
 
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -171,6 +173,21 @@ public final class API {
             .tag("type", player.getUniqueId().toString())
             .tag("world", loc.getWorld().getName())
             .addField("entity", String.valueOf(exp))
+            .addField("x", loc.getBlockX())
+            .addField("y", loc.getBlockY())
+            .addField("z", loc.getBlockZ())
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordPlayerSession(@NotNull final Player player, final boolean isLogin) {
+        final Location loc = player.getLocation();
+        db.write(Point.measurement(sessionsRecords)
+            .tag("id", player.getUniqueId().toString())
+            .tag("name", player.getName())
+            .tag("action", isLogin ? "0" : "1")
+            .tag("world", loc.getWorld().getName())
             .addField("x", loc.getBlockX())
             .addField("y", loc.getBlockY())
             .addField("z", loc.getBlockZ())
@@ -397,5 +414,21 @@ public final class API {
                 if (callback != null) callback.accept(true);
             }
         });
+    }
+
+    @NotNull
+    public SelectQueryImpl querySession() {
+        return select().from(db.database, sessionsRecords).orderBy(desc());
+    }
+
+    @NotNull
+    public SelectQueryImpl querySessionCount() {
+        return select().countAll().from(db.database, sessionsRecords);
+    }
+
+    @NotNull
+    public SelectQueryImpl querySession(final int page) {
+        final SelectQueryImpl query = querySession();
+        return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 }
