@@ -24,12 +24,14 @@ import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.eq;
 
 @SuppressWarnings("deprecation")
 public final class Messages {
-    final API api;
-    final Database db;
+    private final API api;
+    private final Database db;
+    private final Main main;
 
-    public Messages(final API api, final Database db) {
-        this.api = api;
-        this.db = db;
+    public Messages(final Main main) {
+        this.api = main.getApi();
+        this.db = main.getDatabase();
+        this.main = main;
     }
 
     public void sendQueryCommandMessage(@NotNull final CommandSender sender, @Nullable String type, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -66,6 +68,7 @@ public final class Messages {
             }
             sender.spigot().sendMessage(Constants.makeFooter(page, all));
         })));
+        main.addCommandHistory(sender, it -> sendQueryCommandMessage(sender, type, it, fn));
     }
 
     public void sendQueryBlockMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -96,6 +99,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendQueryBlockMessage(sender, it, fn));
     }
     public void sendQueryBlockMessage(@NotNull final CommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page) {
         Objects.requireNonNull(sender);
@@ -105,6 +109,7 @@ public final class Messages {
             .and(eq("y", y))
             .and(eq("z", z))
         );
+        main.addCommandHistory(sender, it -> sendQueryBlockMessage(sender, world, x, y, z, it));
     }
 
     public void sendQueryChatMessage(@NotNull final CommandSender sender, @Nullable String player, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -139,6 +144,8 @@ public final class Messages {
             }
             sender.spigot().sendMessage(Constants.makeFooter(page, all));
         })));
+        final String finalPlayer = player;
+        main.addCommandHistory(sender, it -> sendQueryChatMessage(sender, finalPlayer, it, fn));
     }
 
     public void sendContainerActionsMessage(@NotNull final CommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page) {
@@ -177,6 +184,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendContainerActionsMessage(sender, world, x, y, z, it));
     }
 
     public void sendContainerActionsMessage(@NotNull final CommandSender sender, @NotNull final String entity, final int page) {
@@ -215,6 +223,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendContainerActionsMessage(sender, entity, it));
     }
 
     public void sendContainerActionsMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -250,6 +259,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendContainerActionsMessage(sender, page, fn));
     }
 
     public void sendQueryDeathMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -288,6 +298,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendQueryDeathMessage(sender, it, fn));
     }
 
     public void sendQuerySpawnMessage(@NotNull final CommandSender sender, @NotNull final String id, final int page) {
@@ -327,6 +338,7 @@ public final class Messages {
                 sender.spigot().sendMessage(Constants.makeFooter(page, all));
             })
         ));
+        main.addCommandHistory(sender, it -> sendQuerySpawnMessage(sender, it, fn));
     }
 
     public void sendItemActionMessage(@NotNull final CommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
@@ -360,5 +372,6 @@ public final class Messages {
             }
             sender.spigot().sendMessage(Constants.makeFooter(page, all));
         })));
+        main.addCommandHistory(sender, it -> sendItemActionMessage(sender, it, fn));
     }
 }

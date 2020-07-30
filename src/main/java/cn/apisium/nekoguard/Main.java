@@ -1,6 +1,9 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekocommander.Commander;
+import cn.apisium.nekoguard.changes.ChangeList;
+import com.google.common.collect.EvictingQueue;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.annotation.command.Command;
@@ -11,7 +14,9 @@ import org.bukkit.plugin.java.annotation.plugin.*;
 import org.bukkit.plugin.java.annotation.plugin.author.Author;
 
 import java.util.*;
+import java.util.function.Consumer;
 
+@SuppressWarnings("UnstableApiUsage")
 @Plugin(name = "NekoGuard", version = "1.0")
 @Description("An essential plugin used in NekoCraft.")
 @Author("Shirasawa")
@@ -39,7 +44,9 @@ public final class Main extends JavaPlugin {
     private static Main INSTANCE;
     protected int commandActionHistoryCount = 6;
     protected boolean recordMonsterKilledWithoutCustomName = false;
-    protected final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
+    public final Set<Player> inspecting = Collections.newSetFromMap(new WeakHashMap<>());
+    public final WeakHashMap<CommandSender, EvictingQueue<ChangeList>> commandActions = new WeakHashMap<>();
+    public final WeakHashMap<CommandSender, Consumer<Integer>> commandHistories = new WeakHashMap<>();
 
     { INSTANCE = this; }
 
@@ -62,7 +69,7 @@ public final class Main extends JavaPlugin {
                 getConfig().getString("retentionPolicy", "")
         );
         api = new API(Objects.requireNonNull(getConfig().getString("measurementPrefix")), this);
-        messages = new Messages(api, db);
+        messages = new Messages(this);
         new Commander(this)
             .setDefaultDescription("The main command of NekoGuard.")
             .setDefaultPermissionMessage("§c你没有足够的权限来执行当前指令!")
@@ -87,4 +94,12 @@ public final class Main extends JavaPlugin {
     public API getApi() { return api; }
 
     public static Main getInstance() { return INSTANCE; }
+
+    public void addCommandAction(final CommandSender sender, final ChangeList list) {
+        commandActions.computeIfAbsent(sender, it -> EvictingQueue.create(commandActionHistoryCount)).add(list);
+    }
+
+    public void addCommandHistory(final CommandSender sender, final Consumer<Integer> fn) {
+        commandHistories.put(sender, fn);
+    }
 }

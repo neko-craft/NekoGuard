@@ -2,12 +2,12 @@ package cn.apisium.nekoguard;
 
 import cn.apisium.nekocommander.*;
 import cn.apisium.nekocommander.completer.PlayersCompleter;
+import cn.apisium.nekocommander.completer.WorldsCompleter;
 import cn.apisium.nekoguard.changes.*;
 import cn.apisium.nekoguard.mappers.Mappers;
 import cn.apisium.nekoguard.utils.Completes;
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import cn.apisium.nekoguard.utils.Utils;
-import com.google.common.collect.EvictingQueue;
 import joptsimple.OptionSet;
 import org.apache.commons.lang.ObjectUtils;
 import org.bukkit.Location;
@@ -20,17 +20,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.WeakHashMap;
+import java.util.function.Consumer;
 
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 
-@SuppressWarnings("UnstableApiUsage")
 @Command("nekoguard")
 public final class Commands implements BaseCommand {
     private final API api;
     private final Main main;
     private final Messages messages;
-    private final WeakHashMap<CommandSender, EvictingQueue<ChangeList>> commandActions = new WeakHashMap<>();
 
     Commands(@NotNull final Main main) {
         this.api = main.getApi();
@@ -50,6 +48,17 @@ public final class Commands implements BaseCommand {
             main.inspecting.add(player);
             player.sendMessage(Constants.IN_INSPECTING);
         }
+    }
+
+    @Command("page")
+    public boolean page(@NotNull final CommandSender sender, @NotNull final String[] args) {
+        if (args.length != 1) return false;
+        final Consumer<Integer> fn = main.commandHistories.get(sender);
+        if (fn == null) sender.sendMessage("§c当前没有任何命令记录!");
+        else try {
+            fn.accept(Integer.parseInt(args[0]));
+        } catch (final Exception ignored) { return false; }
+        return true;
     }
 
     @Command("l")
@@ -84,7 +93,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "i", "item" }, completer = Completes.MaterialCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -108,7 +117,7 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument({ "b", "block" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
@@ -127,7 +136,7 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument({ "e", "entity", "type" })
         @Argument({ "l", "player" })
         @Argument(value = "x", type = Integer.class)
@@ -152,18 +161,18 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
         @Argument({ "e", "entity" })
         @Argument({ "se", "source-entity" })
-        @Argument({ "sw", "source-world" })
+        @Argument(value = { "sw", "source-world" }, completer = WorldsCompleter.class)
         @Argument(value = { "sx", "source-x" }, type = Integer.class)
         @Argument(value = { "sy", "source-y" }, type = Integer.class)
         @Argument(value = { "sz", "source-z" }, type = Integer.class)
         @Argument({ "te", "target-entity" })
-        @Argument({ "tw", "target-world" })
+        @Argument(value = { "tw", "target-world" }, completer = WorldsCompleter.class)
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
@@ -214,7 +223,7 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument({ "b", "block" })
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
@@ -229,7 +238,7 @@ public final class Commands implements BaseCommand {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
                     final BlockChangeList list = new BlockChangeList(Mappers.BLOCKS.parse(data));
-                    addCommandAction(sender, list);
+                    main.addCommandAction(sender, list);
                     list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
@@ -243,18 +252,18 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
         @Argument({ "e", "entity" })
         @Argument({ "se", "source-entity" })
-        @Argument({ "sw", "source-world" })
+        @Argument(value = { "sw", "source-world" }, completer = WorldsCompleter.class)
         @Argument(value = { "sx", "source-x" }, type = Integer.class)
         @Argument(value = { "sy", "source-y" }, type = Integer.class)
         @Argument(value = { "sz", "source-z" }, type = Integer.class)
         @Argument({ "te", "target-entity" })
-        @Argument({ "tw", "target-world" })
+        @Argument(value = { "tw", "target-world" }, completer = WorldsCompleter.class)
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
@@ -266,7 +275,7 @@ public final class Commands implements BaseCommand {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
                     final ContainerChangeList list = new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
-                    addCommandAction(sender, list);
+                    main.addCommandAction(sender, list);
                     list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
@@ -280,7 +289,7 @@ public final class Commands implements BaseCommand {
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
-        @Argument({ "w", "world" })
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument({ "e", "entity", "type" })
         @Argument({ "l", "player" })
         @Argument(value = "x", type = Integer.class)
@@ -301,7 +310,7 @@ public final class Commands implements BaseCommand {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) return;
                     final EntityChangeList list = new EntityChangeList(Mappers.DEATHS.parse(data));
-                    addCommandAction(sender, list);
+                    main.addCommandAction(sender, list);
                     list.doChange(sender, it -> sender.sendMessage("Success"));
                 });
             } catch (Exception e) {
@@ -421,9 +430,5 @@ public final class Commands implements BaseCommand {
                 } else query.and(eq("te", ObjectUtils.defaultIfNull(te, e)));
             }
         }
-    }
-
-    private void addCommandAction(final CommandSender sender, final ChangeList list) {
-        commandActions.computeIfAbsent(sender, it -> EvictingQueue.create(main.commandActionHistoryCount)).add(list);
     }
 }

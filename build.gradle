@@ -23,7 +23,7 @@ dependencies {
     compileOnly 'org.spigotmc:plugin-annotations:1.2.3-SNAPSHOT'
     compileOnly 'com.destroystokyo.paper:paper-api:1.16.1-R0.1-SNAPSHOT'
     compileOnly 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
-    compile 'com.github.neko-craft:NekoCommander:cfdec3c2b5'
+    compile 'com.github.neko-craft:NekoCommander:05accb5c4b'
     compile ('org.influxdb:influxdb-java:2.19') {
         exclude group: 'org.jetbrains', module: 'annotations'
     }
