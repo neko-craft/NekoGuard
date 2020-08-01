@@ -198,7 +198,7 @@ public final class Commands implements BaseCommand {
         public void lookupBlocks(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
             messages.sendQueryBlockMessage(sender, 0, it -> {
                 if (result.has("block")) it.where(
-                    regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
+                    regex("block", "/^(minecraft:)?" + result.valueOf("block") + "/"));
                 processQuery(result, it, sender, false);
             });
         }
@@ -307,7 +307,7 @@ public final class Commands implements BaseCommand {
                 final SelectQueryImpl query = api.queryBlock().orderBy(asc());
                 processQuery(result, query, sender, true);
                 if (result.has("block")) query.where(
-                    regex("data", "/^(minecraft:)?" + result.valueOf("block") + "/"));
+                    regex("block", "/^(minecraft:)?" + result.valueOf("block") + "/"));
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) {
@@ -316,7 +316,7 @@ public final class Commands implements BaseCommand {
                     }
                     final BlockChangeList list = new BlockChangeList(Mappers.BLOCKS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(it -> sender.sendMessage("Success"));
+                    list.doChange(sendFinishMessage(sender));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -356,7 +356,7 @@ public final class Commands implements BaseCommand {
                     }
                     final ContainerChangeList list = new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(it -> sender.sendMessage("Success"));
+                    list.doChange(sendFinishMessage(sender));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -394,7 +394,7 @@ public final class Commands implements BaseCommand {
                     }
                     final EntityChangeList list = new EntityChangeList(Mappers.DEATHS.parse(data));
                     main.addCommandAction(sender, list);
-                    list.doChange(it -> sender.sendMessage("Success"));
+                    list.doChange(sendFinishMessage(sender));
                 });
             } catch (Exception e) {
                 if (e != Constants.IGNORED_ERROR) e.printStackTrace();
@@ -515,5 +515,11 @@ public final class Commands implements BaseCommand {
                 } else query.and(eq("te", ObjectUtils.defaultIfNull(te, e)));
             }
         }
+    }
+
+    @NotNull
+    private Consumer<ChangeList> sendFinishMessage(@NotNull final CommandSender sender) {
+        return it -> sender.sendMessage("§e[NekoGuard] §b操作完成! §7(" + it.getName() + ") §e总计操作:" +
+            it.getAllCount() + " §a成功:" + it.getSuccessCount() + " §c失败:" + it.getFailed());
     }
 }

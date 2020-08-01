@@ -49,25 +49,25 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityExplode(final EntityExplodeEvent e) {
         if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), "#" + e.getEntityType().getKey().toString());
+        api.recordBlocksBreak(e.blockList(), "@" + e.getEntityType().getKey().toString());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockExplode(final BlockExplodeEvent e) {
         if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), "@" + e.getBlock().getType().getKey());
+        api.recordBlocksBreak(e.blockList(), "#" + e.getBlock().getType().getKey());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockSpread(final BlockSpreadEvent e) {
-        final String id = "@" + e.getBlock().getType().getKey();
+        final String id = "#" + e.getBlock().getType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         api.recordBlockPlace(e.getNewState(), id);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBurn(final BlockBurnEvent e) {
-        api.recordBlockBreak(e.getBlock(), "@" + Material.FIRE.getKey());
+        api.recordBlockBreak(e.getBlock(), "#" + Material.FIRE.getKey());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -82,22 +82,27 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockForm(final BlockFormEvent e) {
-        final String id = "@" + e.getNewState().getType().getKey();
+        final String id = "#" + e.getNewState().getType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         api.recordBlockPlace(e.getNewState(), id);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockFromTo(final BlockFromToEvent e) {
+        api.recordBlockBreak(e.getToBlock(), "#" + e.getBlock().getType().getKey());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityBlockForm(final EntityBlockFormEvent e) {
         if (!(e.getEntity() instanceof Snowman)) return;
-        final String id = "#" + e.getEntity().getType().getKey();
+        final String id = "@" + e.getEntity().getType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         api.recordBlockPlace(e.getNewState(), id);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityChangeBlock(final EntityChangeBlockEvent e) {
-        final String id = "#" + e.getEntityType().getKey();
+        final String id = "@" + e.getEntityType().getKey();
         api.recordBlockBreak(e.getBlock(), id);
         if (!e.getTo().isAir()) api.recordBlockPlace(e.getBlock().getState(), e.getTo(), id);
     }
@@ -197,7 +202,8 @@ public final class Events implements Listener {
     public void onEntityDeath(final EntityDeathEvent e) {
         final LivingEntity entity = e.getEntity();
         if (!main.recordMonsterKilledWithoutCustomName && entity.getCustomName() == null &&
-            (entity instanceof Monster || entity instanceof Slime || entity instanceof Ambient)) return;
+            ((entity instanceof Monster && e.getEntityType() != EntityType.WITHER) ||
+                entity instanceof Slime || entity instanceof Ambient)) return;
         final EntityDamageEvent cause = entity.getLastDamageCause();
         final String killer = Utils.getKiller(entity),
             reason = cause == null ? "" : cause.getCause().name();
@@ -249,7 +255,8 @@ public final class Events implements Listener {
         final Entity entity = e.getEntity();
         if (e.getEntity() instanceof LeashHitch) return;
         if (entity instanceof Animals || entity instanceof Hanging || entity instanceof Fish ||
-            entity instanceof ArmorStand || entity instanceof Golem || entity instanceof Villager) {
+            entity instanceof ArmorStand || entity instanceof Golem || entity instanceof Villager ||
+            entity instanceof Wither) {
             api.recordSpawn(entity, Constants.IS_PAPER ? entity.getEntitySpawnReason().name() : null);
         }
     }

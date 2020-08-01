@@ -20,7 +20,7 @@ import java.util.function.Consumer;
 @Author("Shirasawa")
 @Website("https://apisium.cn")
 @ApiVersion(ApiVersion.Target.v1_13)
-@Commands(@Command(name = "nekoguard", permission = "nekoguard.use", aliases = { "ng" }))
+@Commands(@Command(name = "nekoguard", aliases = { "ng" }))
 @Permissions({
     @Permission(name = "nekoguard.inspect"),
     @Permission(name = "nekoguard.lookup.chat"),
@@ -29,11 +29,14 @@ import java.util.function.Consumer;
     @Permission(name = "nekoguard.lookup.block"),
     @Permission(name = "nekoguard.lookup.death"),
     @Permission(name = "nekoguard.lookup.container"),
+    @Permission(name = "nekoguard.lookup.session"),
     @Permission(name = "nekoguard.fetch.action"),
     @Permission(name = "nekoguard.fetch.container"),
     @Permission(name = "nekoguard.rollback.block"),
     @Permission(name = "nekoguard.rollback.container"),
-    @Permission(name = "nekoguard.rollback.entity")
+    @Permission(name = "nekoguard.rollback.entity"),
+    @Permission(name = "nekoguard.fetch.action"),
+    @Permission(name = "nekoguard.fetch.container")
 })
 public final class Main extends JavaPlugin {
     private Database db;

@@ -11,6 +11,8 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.TileState;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Piston;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -183,7 +185,14 @@ public final class Utils {
 
     @NotNull
     public static String getFullBlockData(@NotNull final BlockState block) {
-        String str = block.getBlockData().getAsString();
+        BlockData data = block.getBlockData();
+        switch (block.getType()) {
+            case POTION:
+            case STICKY_PISTON:
+                data = data.clone();
+                ((Piston) data).setExtended(false);
+        }
+        String str = data.getAsString();
         if (block instanceof TileState) {
             final String s = NMSUtils.serializeTileEntity(block);
             if (s != null) {
