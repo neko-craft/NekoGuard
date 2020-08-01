@@ -29,14 +29,21 @@ public final class ContainerChangeList extends ChangeList {
                 final Object[] arr = iterator.next();
                 final Inventory source = Utils.getInventory((String) arr[2], (String) arr[3], (Double) arr[4], (Double) arr[5], (Double) arr[6]),
                      target = Utils.getInventory((String) arr[7], (String) arr[8], (Double) arr[9], (Double) arr[10], (Double) arr[11]);
-                if (source == null && target != null) continue;
+                if (source == null && target == null) {
+                    failedCount++;
+                    continue;
+                }
                 final ItemStack is = NMSUtils.deserializeItemStack((String) arr[1]);
-                if (is == null) continue;
+                if (is == null) {
+                    failedCount++;
+                    continue;
+                }
                 if (source != null) {
                     source.addItem(is);
                     added.add(new Pair<>(source, is));
                 }
                 if (target != null) remove(target, is, true);
+                successCount++;
             }
             if (!iterator.hasNext()) {
                 it.cancel();

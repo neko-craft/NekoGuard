@@ -67,7 +67,9 @@ public final class BlockChangeList extends ChangeList {
                             state instanceof TileState ? NMSUtils.getTileEntity(state) : null));
                     }
                 });
-                i += entry.getValue().size();
+                final int size = entry.getValue().size();
+                i += size;
+                successCount += size;
             }
             if (!iterator.hasNext()) {
                 it.cancel();

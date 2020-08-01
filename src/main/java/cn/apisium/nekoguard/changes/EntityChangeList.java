@@ -36,6 +36,7 @@ public final class EntityChangeList extends ChangeList {
                 final Object[] arr = iterator.next();
                 if (!((String) arr[2]).startsWith("@")) {
                     i--;
+                    failedCount++;
                     continue;
                 }
                 final Class<? extends Entity> clazz = ENTITY_TYPES.get(((String) arr[2]).substring(1));
@@ -50,6 +51,7 @@ public final class EntityChangeList extends ChangeList {
                     : world.spawn(new Location(world, (Double) arr[6], (Double) arr[7], (Double) arr[8]), clazz);
                 NMSUtils.loadEntityData(entity, (String) arr[3]);
                 spawned.add(entity);
+                successCount++;
             }
             if (!iterator.hasNext()) {
                 it.cancel();

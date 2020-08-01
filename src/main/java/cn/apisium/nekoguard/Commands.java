@@ -1,6 +1,7 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekocommander.*;
+import cn.apisium.nekocommander.completer.BlocksCompleter;
 import cn.apisium.nekocommander.completer.PlayersCompleter;
 import cn.apisium.nekocommander.completer.WorldsCompleter;
 import cn.apisium.nekoguard.changes.*;
@@ -191,7 +192,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
         @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
-        @Argument({ "b", "block" })
+        @Argument(value = { "b", "block" }, completer = BlocksCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
@@ -298,7 +299,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
         @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
-        @Argument({ "b", "block" })
+        @Argument(value = { "b", "block" }, completer = BlocksCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
