@@ -115,7 +115,7 @@ public final class Commands implements BaseCommand {
             @Argument({ "t", "time" }) final String time,
             @Nullable @Argument(value = { "p", "player" }, completer = PlayersCompleter.class) final String player
         ) {
-            messages.sendQueryChatMessage(sender, player, 0,
+            messages.sendQueryChatMessage(sender, Utils.PLATFORM.getPlayerUUIDByName(player, sender), 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause(time)));
         }
 
@@ -126,7 +126,8 @@ public final class Commands implements BaseCommand {
             @Nullable @Argument({ "t", "time" }) final String time,
             @Nullable @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class) final String performer
         ) {
-            messages.sendQueryCommandMessage(sender, performer, 0,
+            messages.sendQueryCommandMessage(sender, performer == null ? null : performer.startsWith("#") ? performer.substring(1)
+                    : Utils.PLATFORM.getPlayerUUIDByName(performer, sender), 0,
                 time == null ? null : it -> it.where(new SimpleTimeClause(time)));
         }
 
