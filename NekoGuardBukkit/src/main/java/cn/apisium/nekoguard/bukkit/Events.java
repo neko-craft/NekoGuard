@@ -1,7 +1,11 @@
-package cn.apisium.nekoguard;
+package cn.apisium.nekoguard.bukkit;
 
-import cn.apisium.nekoguard.utils.CommandSenderType;
-import cn.apisium.nekoguard.utils.Utils;
+import cn.apisium.nekocommander.ProxiedCommandSender;
+import cn.apisium.nekoguard.Constants;
+import cn.apisium.nekoguard.Messages;
+import cn.apisium.nekoguard.bukkit.utils.CommandSenderType;
+import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
+import cn.apisium.nekoguard.bukkit.utils.Utils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
@@ -23,27 +27,31 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 public final class Events implements Listener {
+    private final cn.apisium.nekoguard.API frontApi;
     private final API api;
-    private final Main main;
+    private final cn.apisium.nekoguard.Main main;
     private final Messages messages;
-    Events(final Main main) {
-        this.api = main.getApi();
+    private final cn.apisium.nekoguard.bukkit.Main plugin;
+    Events(final cn.apisium.nekoguard.bukkit.Main plugin) {
+        main = Main.getInstance();
+        frontApi = main.getApi();
+        api = plugin.getApi();
+        this.plugin = plugin;
         this.messages = main.getMessages();
-        this.main = main;
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(final BlockBreakEvent e) {
-        api.recordBlockBreak(e.getBlock(), e.getPlayer());
+        api.recordBlockAction(e.getBlock(), e.getPlayer(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(final BlockPlaceEvent e) {
-        if (main.inspecting.contains(e.getPlayer())) {
+        if (main.isInspecting(e.getPlayer())) {
             final Block b = e.getBlock();
             e.setCancelled(true);
-            messages.sendQueryBlockMessage(e.getPlayer(), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-        } else api.recordBlockPlace(e.getBlock(), e.getPlayer());
+            messages.sendQueryBlockMessage(ProxiedCommandSender.newInstance(e.getPlayer()), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        } else api.recordBlockAction(e.getBlock(), e.getPlayer(), false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -61,55 +69,59 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockSpread(final BlockSpreadEvent e) {
         final String id = "#" + e.getBlock().getType().getKey();
-        api.recordBlockBreak(e.getBlock(), id);
-        api.recordBlockPlace(e.getNewState(), id);
+        api.recordBlockAction(e.getBlock(), id, true);
+        api.recordBlockAction(e.getNewState(), id, false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBurn(final BlockBurnEvent e) {
-        api.recordBlockBreak(e.getBlock(), "#" + Material.FIRE.getKey());
+        api.recordBlockAction(e.getBlock(), "#" + Material.FIRE.getKey(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerBucketFill(final PlayerBucketFillEvent e) {
-        api.recordBlockBreak(e.getBlock(), e.getPlayer());
+        api.recordBlockAction(e.getBlock(), e.getPlayer(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerBucketEmpty(final PlayerBucketEmptyEvent e) {
-        api.recordBlockBreak(e.getBlock(), e.getPlayer());
+        api.recordBlockAction(e.getBlock(), e.getPlayer(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockForm(final BlockFormEvent e) {
         final String id = "#" + e.getNewState().getType().getKey();
-        api.recordBlockBreak(e.getBlock(), id);
-        api.recordBlockPlace(e.getNewState(), id);
+        api.recordBlockAction(e.getBlock(), id, true);
+        api.recordBlockAction(e.getNewState(), id, false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockFromTo(final BlockFromToEvent e) {
-        api.recordBlockBreak(e.getToBlock(), "#" + e.getBlock().getType().getKey());
+        api.recordBlockAction(e.getToBlock(), "#" + e.getBlock().getType().getKey(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityBlockForm(final EntityBlockFormEvent e) {
         if (!(e.getEntity() instanceof Snowman)) return;
         final String id = "@" + e.getEntity().getType().getKey();
-        api.recordBlockBreak(e.getBlock(), id);
-        api.recordBlockPlace(e.getNewState(), id);
+        api.recordBlockAction(e.getBlock(), id, true);
+        api.recordBlockAction(e.getNewState(), id, false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityChangeBlock(final EntityChangeBlockEvent e) {
         final String id = "@" + e.getEntityType().getKey();
-        api.recordBlockBreak(e.getBlock(), id);
-        if (!e.getTo().isAir()) api.recordBlockPlace(e.getBlock().getState(), e.getTo(), id);
+        api.recordBlockAction(e.getBlock(), id, true);
+        if (!e.getTo().isAir()) {
+            final Block block = e.getBlock();
+            frontApi.recordBlockAction(id, false, block.getWorld().getName(), block.getX(), block.getY(),
+                block.getZ(), e.getTo().getKey().toString());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChat(final AsyncPlayerChatEvent e) {
-        api.recordChat(e.getMessage(), e.getPlayer().getUniqueId().toString());
+        frontApi.recordChat(e.getMessage(), e.getPlayer().getUniqueId().toString());
     }
 
     @EventHandler
@@ -118,17 +130,18 @@ public final class Events implements Listener {
         final Block b = e.getClickedBlock();
         if (!e.hasBlock() || b == null || e.getAction() == Action.PHYSICAL ||
             (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
-            !main.inspecting.contains(p)) return;
+            !main.isInspecting(p)) return;
         e.setCancelled(true);
-        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-        else messages.sendQueryBlockMessage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(p);
+        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        else messages.sendQueryBlockMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryMoveItem(final InventoryMoveItemEvent e) {
         if (e.getDestination() == e.getSource() ||
-            !Constants.isNeedToRecordContainerAction(e.getSource().getType()) ||
-            !Constants.isNeedToRecordContainerAction(e.getDestination().getType())) return;
+            Utils.isNeedToRecordContainerAction(e.getSource().getType()) ||
+            Utils.isNeedToRecordContainerAction(e.getDestination().getType())) return;
         api.recordContainerAction(e.getItem().clone(), e.getSource(), e.getDestination());
     }
 
@@ -141,15 +154,14 @@ public final class Events implements Listener {
         if (e.getClickedInventory() == null) {
             return;
         }
-        if (!Constants.isNeedToRecordContainerAction(type)) return;
+        if (!Utils.isNeedToRecordContainerAction(type)) return;
         is = is.clone();
         if (e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
-            final String id = e.getWhoClicked().getUniqueId().toString();
             if (e.getClickedInventory() == e.getView().getTopInventory()) {
-                if (Constants.isNeedToRecordContainerAction(inv.getType()))
-                    api.recordContainerAction(is, inv, id);
-            } else if (Constants.isNeedToRecordContainerAction(inv.getType()))
-                api.recordContainerAction(is, id, inv);
+                if (Utils.isNeedToRecordContainerAction(inv.getType()))
+                    api.recordContainerAction(is, inv, e.getView().getBottomInventory());
+            } else if (Utils.isNeedToRecordContainerAction(inv.getType()))
+                api.recordContainerAction(is, e.getView().getBottomInventory(), inv);
             return;
         }
         if (e.getClickedInventory() != inv) return;
@@ -157,28 +169,26 @@ public final class Events implements Listener {
             case SWAP_WITH_CURSOR:
                 final ItemStack is2 = e.getView().getCursor();
                 if (is2 != null && !is2.getType().isAir()) api.recordContainerAction(is2.clone(),
-                    e.getWhoClicked().getUniqueId().toString(), inv);
+                    e.getView().getBottomInventory(), inv);
             case PICKUP_ALL:
             case PICKUP_HALF:
             case PICKUP_ONE:
             case PICKUP_SOME:
             case COLLECT_TO_CURSOR:
-                api.recordContainerAction(is, inv, e.getWhoClicked().getUniqueId().toString());
+                api.recordContainerAction(is, inv, e.getView().getBottomInventory());
                 break;
             case PLACE_SOME:
             case PLACE_ALL:
             case PLACE_ONE:
             case CLONE_STACK:
-                api.recordContainerAction(is, e.getWhoClicked().getUniqueId().toString(), inv);
+                api.recordContainerAction(is, e.getView().getBottomInventory(), inv);
                 break;
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerCommand(final PlayerCommandPreprocessEvent e) {
-        try {
-            api.recordCommand(e.getMessage(), e.getPlayer().getUniqueId().toString());
-        } catch (final NoClassDefFoundError ignored) { }
+        frontApi.recordCommand(e.getMessage(), e.getPlayer().getUniqueId().toString());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -194,14 +204,14 @@ public final class Events implements Listener {
                 case ENTITY:
                     performer = ((Entity) sender).getUniqueId().toString();
             }
-            api.recordCommand(e.getCommand(), type.name(), performer);
+            frontApi.recordCommand(e.getCommand(), type.name(), performer);
         } catch (final NoClassDefFoundError ignored) { }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDeath(final EntityDeathEvent e) {
         final LivingEntity entity = e.getEntity();
-        if (!main.recordMonsterKilledWithoutCustomName && entity.getCustomName() == null &&
+        if (!plugin.recordMonsterKilledWithoutCustomName && entity.getCustomName() == null &&
             ((entity instanceof Monster && e.getEntityType() != EntityType.WITHER) ||
                 entity instanceof Slime || entity instanceof Ambient)) return;
         final EntityDamageEvent cause = entity.getLastDamageCause();
@@ -209,68 +219,74 @@ public final class Events implements Listener {
             reason = cause == null ? "" : cause.getCause().name();
         if (e instanceof PlayerDeathEvent) {
             final PlayerDeathEvent e2 = (PlayerDeathEvent) e;
-            api.recordPlayerDeath(killer, e2.getEntity(), reason, e2.getKeepLevel() ? 0 : e2.getDroppedExp());
-        } else api.recordDeath(killer, entity, reason);
+            final Player p = e2.getEntity();
+            final Location loc = p.getLocation();
+            frontApi.recordPlayerDeath(killer, reason, p.getUniqueId().toString(), loc.getWorld().toString(),
+                loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), e2.getKeepLevel() ? 0 : e2.getDroppedExp());
+        } else api.recordDeath(killer, reason, entity);
     }
 
-    @SuppressWarnings("SuspiciousMethodCalls")
     @EventHandler
     public void onEntityDamageByEntity(final EntityDamageByEntityEvent e) {
-        if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !main.inspecting.contains(e.getDamager())) return;
+        final Entity entity = e.getDamager();
+        if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !main.isInspecting(entity)) return;
         e.setCancelled(true);
+        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(e.getDamager());
         if (e.getEntity() instanceof InventoryHolder)
-            messages.sendContainerActionsMessage(e.getDamager(), e.getEntity().getUniqueId().toString(), 0);
-        else messages.sendQuerySpawnMessage(e.getDamager(), e.getEntity().getUniqueId().toString(), 0);
+            messages.sendContainerActionsMessage(pcs, e.getEntity().getUniqueId().toString(), 0);
+        else messages.sendQuerySpawnMessage(pcs, e.getEntity().getUniqueId().toString(), 0);
     }
 
-    @SuppressWarnings("SuspiciousMethodCalls")
     @EventHandler
     public void onVehicleDamage(final VehicleDamageEvent e) {
-        if (e.getAttacker() == null || !main.inspecting.contains(e.getAttacker())) return;
+        final Entity entity = e.getAttacker();
+        if (entity == null || !main.isInspecting(entity)) return;
         e.setCancelled(true);
+        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(entity);
         if (e.getVehicle() instanceof InventoryHolder)
-            messages.sendContainerActionsMessage(e.getAttacker(), e.getVehicle().getUniqueId().toString(), 0);
-        else messages.sendQuerySpawnMessage(e.getAttacker(), e.getVehicle().getUniqueId().toString(), 0);
+            messages.sendContainerActionsMessage(pcs, e.getVehicle().getUniqueId().toString(), 0);
+        else messages.sendQuerySpawnMessage(pcs, e.getVehicle().getUniqueId().toString(), 0);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVehicleDestroy(final VehicleDestroyEvent e) {
-        api.recordDeath(Utils.getEntityPerformer(e.getAttacker()), e.getVehicle(),
-            e.getAttacker() == null ? "UNKNOWN" : Constants.ENTITY_ATTACK);
+        api.recordDeath(Utils.getEntityPerformer(e.getAttacker()),
+            e.getAttacker() == null ? "UNKNOWN" : "ENTITY_ATTACK", e.getVehicle());
     }
 
-    @SuppressWarnings("SuspiciousMethodCalls")
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHangingBreak(final HangingBreakEvent e) {
         if (e.getEntity() instanceof LeashHitch) return;
         final Entity remover = e instanceof HangingBreakByEntityEvent ? ((HangingBreakByEntityEvent) e).getRemover() : null;
-        if (remover != null && main.inspecting.contains(remover)) {
+        if (remover != null && main.isInspecting(remover)) {
             e.setCancelled(true);
-            messages.sendQuerySpawnMessage(remover, e.getEntity().getUniqueId().toString(), 0);
-        } else api.recordDeath(Utils.getEntityPerformer(remover), e.getEntity(), e.getCause().name());
+            messages.sendQuerySpawnMessage(ProxiedCommandSender.newInstance(remover), e.getEntity().getUniqueId().toString(), 0);
+        } else api.recordDeath(Utils.getEntityPerformer(remover), e.getCause().name(), e.getEntity());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntitySpawn(final EntitySpawnEvent e) {
         final Entity entity = e.getEntity();
-        if (e.getEntity() instanceof LeashHitch) return;
+        if (e.getEntity() instanceof LeashHitch || (cn.apisium.nekoguard.Constants.IS_PAPER &&
+            entity.getEntitySpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL)) return;
         if (entity instanceof Animals || entity instanceof Hanging || entity instanceof Fish ||
             entity instanceof ArmorStand || entity instanceof Golem || entity instanceof Villager ||
             entity instanceof Wither) {
-            api.recordSpawn(entity, Constants.IS_PAPER ? entity.getEntitySpawnReason().name() : null);
+            api.recordSpawn(entity, cn.apisium.nekoguard.Constants.IS_PAPER ? entity.getEntitySpawnReason().name() : "");
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVehicleCreate(final VehicleCreateEvent e) {
-        api.recordSpawn(e.getVehicle(), Constants.IS_PAPER ? e.getVehicle().getEntitySpawnReason().name() : null);
+        api.recordSpawn(e.getVehicle(), Constants.IS_PAPER ? e.getVehicle().getEntitySpawnReason().name() : "");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerDropItem(final PlayerDropItemEvent e) {
         final Item item = e.getItemDrop();
         final Location loc = item.getLocation();
-        api.recordItemAction(item.getItemStack(), true, e.getPlayer().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
+        frontApi.recordItemAction(NMSUtils.serializeItemStack(item.getItemStack()), true,
+            e.getPlayer().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -278,7 +294,8 @@ public final class Events implements Listener {
         if (e.getEntityType() != EntityType.PLAYER) return;
         final Item item = e.getItem();
         final Location loc = item.getLocation();
-        api.recordItemAction(item.getItemStack(), false, e.getEntity().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
+        frontApi.recordItemAction(NMSUtils.serializeItemStack(item.getItemStack()), false,
+            e.getEntity().getUniqueId().toString(), loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

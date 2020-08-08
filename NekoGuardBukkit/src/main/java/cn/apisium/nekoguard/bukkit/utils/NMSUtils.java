@@ -1,11 +1,17 @@
-package cn.apisium.nekoguard.utils;
+package cn.apisium.nekoguard.bukkit.utils;
 
+import cn.apisium.nekoguard.Constants;
+import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.TileState;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Piston;
 import org.bukkit.entity.Entity;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import cn.apisium.nekoguard.utils.Utils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -133,5 +139,31 @@ public final class NMSUtils {
             Utils.throwSneaky(e);
             throw new RuntimeException();
         }
+    }
+    
+    @NotNull
+    public static String getFullBlockData(@NotNull final BlockState block) {
+        BlockData data = block.getBlockData();
+        switch (block.getType()) {
+            case POTION:
+            case STICKY_PISTON:
+                data = data.clone();
+                ((Piston) data).setExtended(false);
+        }
+        String str = data.getAsString();
+        if (block instanceof TileState) {
+            final String s = NMSUtils.serializeTileEntity(block);
+            if (s != null) {
+                str += Constants.TILE;
+                str += s;
+            }
+        }
+        return str;
+    }
+
+    public static void patchDataToBlock(@NotNull final Block block, @NotNull final String data) {
+        final String[] arr = data.split(Constants.TILE, 2);
+        block.setBlockData(Bukkit.createBlockData(arr[0]));
+        if (arr.length == 2) NMSUtils.loadTileStateData(block, arr[1]);
     }
 }

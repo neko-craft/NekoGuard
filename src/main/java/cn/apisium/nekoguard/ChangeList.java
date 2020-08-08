@@ -1,22 +1,21 @@
-package cn.apisium.nekoguard.changes;
+package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.mappers.SeriesMapper;
-import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
 public abstract class ChangeList {
-    int failedCount;
-    int allCount;
-    int successCount;
-    final SeriesMapper.Mapper mapper;
-    ChangeList(final SeriesMapper.Mapper mapper) {
+    protected int failedCount;
+    protected int allCount;
+    protected int successCount;
+    protected final SeriesMapper.Mapper mapper;
+    protected ChangeList(final SeriesMapper.Mapper mapper) {
         this.mapper = mapper;
         allCount = mapper.count;
     }
-    ChangeList(final SeriesMapper.Mapper mapper, final int count) {
+    protected ChangeList(final SeriesMapper.Mapper mapper, final int count) {
         this.mapper = mapper;
         allCount = count;
     }

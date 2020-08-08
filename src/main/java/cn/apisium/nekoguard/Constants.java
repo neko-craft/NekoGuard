@@ -5,8 +5,6 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.inventory.InventoryType;
 
 public final class Constants {
     public static boolean IS_PAPER;
@@ -22,7 +20,6 @@ public final class Constants {
     public static final String SUCCESS = "§e[NekoGuard] §a操作成功!", FAILED = "§e[NekoGuard] §c操作失败!";
     public static final String IN_INSPECTING = "§e[NekoGuard] §b您当前正处于审查模式!";
     public static final String NO_RECORDS = "§e[NekoGuard] §c当前没有任何记录!";
-    public static final String ENTITY_ATTACK = EntityDamageEvent.DamageCause.ENTITY_ATTACK.name();
     public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("§c点击这里将会直接撤销操作!");
 
     static {
@@ -32,27 +29,6 @@ public final class Constants {
             Class.forName("com.destroystokyo.paper.entity.Pathfinder");
             IS_PAPER = true;
         } catch (final Exception ignored) { }
-    }
-
-    public static boolean isNeedToRecordContainerAction(final InventoryType type) {
-        switch (type) {
-            case CHEST:
-            case BARREL:
-            case HOPPER:
-            case SMOKER:
-            case BREWING:
-            case FURNACE:
-            case DROPPER:
-            case LECTERN:
-            case CREATIVE:
-            case PLAYER:
-            case MERCHANT:
-            case DISPENSER:
-            case SHULKER_BOX:
-            case BLAST_FURNACE:
-                return true;
-            default: return false;
-        }
     }
 
     public static TextComponent makeFooter(int page, final int all) {

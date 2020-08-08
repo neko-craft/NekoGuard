@@ -1,4 +1,4 @@
-package cn.apisium.nekoguard.utils;
+package cn.apisium.nekoguard.bukkit.utils;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import cn.apisium.nekoguard.utils.Utils;
 
 public final class ReflectionUtil {
     private ReflectionUtil() {}

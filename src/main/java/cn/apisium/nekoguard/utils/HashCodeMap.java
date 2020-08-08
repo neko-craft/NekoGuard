@@ -27,6 +27,10 @@ public class HashCodeMap <K, V> extends HashMap<K, V> {
         m.forEach((k, v) -> map.put(k == null ? null : k.hashCode(), k));
     }
 
+    public V removeByHash(final int code) {
+        return remove(getByHash(code));
+    }
+
     @Override
     public V remove(final Object key) {
         map.remove(key == null ? null : key.hashCode());

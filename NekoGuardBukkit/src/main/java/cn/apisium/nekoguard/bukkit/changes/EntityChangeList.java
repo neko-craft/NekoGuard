@@ -1,9 +1,10 @@
-package cn.apisium.nekoguard.changes;
+package cn.apisium.nekoguard.bukkit.changes;
 
+import cn.apisium.nekoguard.ChangeList;
 import cn.apisium.nekoguard.Constants;
-import cn.apisium.nekoguard.Main;
+import cn.apisium.nekoguard.bukkit.Main;
+import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.mappers.SeriesMapper;
-import cn.apisium.nekoguard.utils.NMSUtils;
 import org.bukkit.*;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -15,7 +16,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
-public final class EntityChangeList extends ChangeList {
+public final class EntityChangeList extends cn.apisium.nekoguard.ChangeList {
     private final ArrayList<Entity> spawned = new ArrayList<>(mapper.count);
     private static final HashMap<String, Class<? extends Entity>> ENTITY_TYPES = new HashMap<>(EntityType.values().length);
     static {
@@ -28,9 +29,9 @@ public final class EntityChangeList extends ChangeList {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public void doChange(@Nullable final Consumer<ChangeList> callback) {
+    public void doChange(@Nullable final Consumer<cn.apisium.nekoguard.ChangeList> callback) {
         final Iterator<Object[]> iterator = mapper.all().iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator.hasNext() && i++ < 2000) {
                 final Object[] arr = iterator.next();
@@ -63,7 +64,7 @@ public final class EntityChangeList extends ChangeList {
     @Override
     public void undo(@Nullable final Consumer<ChangeList> callback) {
         final Iterator<Entity> iterator = spawned.iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator.hasNext() && i++ < 50000) iterator.next().remove();
             if (!iterator.hasNext()) {

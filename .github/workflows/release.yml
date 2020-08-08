@@ -11,9 +11,8 @@ jobs:
       - uses: actions/setup-java@v1
         with:
           java-version: 8
-      - uses: eskatos/gradle-command-action@v1
-        with:
-          arguments: jar
+      - name: Build
+        run: gradlew NekoGuardBukkit:jar
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:

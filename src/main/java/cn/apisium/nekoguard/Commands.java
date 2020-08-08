@@ -4,9 +4,7 @@ import cn.apisium.nekocommander.*;
 import cn.apisium.nekocommander.completer.BlocksCompleter;
 import cn.apisium.nekocommander.completer.PlayersCompleter;
 import cn.apisium.nekocommander.completer.WorldsCompleter;
-import cn.apisium.nekoguard.changes.*;
 import cn.apisium.nekoguard.mappers.Mappers;
-import cn.apisium.nekoguard.utils.Completes;
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import cn.apisium.nekoguard.utils.Utils;
 import joptsimple.OptionSet;
@@ -14,9 +12,6 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang.ObjectUtils;
-import org.bukkit.Location;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.influxdb.querybuilder.WhereQueryImpl;
@@ -37,27 +32,27 @@ public final class Commands implements BaseCommand {
     private final Messages messages;
 
     Commands(@NotNull final Main main) {
-        this.api = main.getApi();
-        this.messages = main.getMessages();
+        api = main.getApi();
+        messages = main.getMessages();
         this.main = main;
     }
 
     @Command("i")
     @Command("inspect")
     @Permission("nekoguard.inspect")
-    public void inspect(@NotNull final Player player) {
-        player.setGravity(true);
-        if (main.inspecting.contains(player)) {
+    @PlayerOnly
+    public void inspect(@NotNull final ProxiedCommandSender player) {
+        if (main.inspecting.containsKey(player)) {
             main.inspecting.remove(player);
             player.sendMessage("§e[NekoGuard] §b当前已经退出了审查模式!");
         } else {
-            main.inspecting.add(player);
+            main.inspecting.put(player, null);
             player.sendMessage(Constants.IN_INSPECTING);
         }
     }
 
     @Command("page")
-    public boolean page(@NotNull final CommandSender sender, @NotNull final String[] args) {
+    public boolean page(@NotNull final ProxiedCommandSender sender, @NotNull final String[] args) {
         if (args.length != 1) return false;
         final Consumer<Integer> fn = main.commandHistories.get(sender);
         if (fn == null) sender.sendMessage(Constants.NO_RECORDS);
@@ -68,7 +63,7 @@ public final class Commands implements BaseCommand {
     }
 
     @Command("undo")
-    public boolean undo(@NotNull final CommandSender sender, @NotNull final String[] args) {
+    public boolean undo(@NotNull final ProxiedCommandSender sender, @NotNull final String[] args) {
         final LinkedList<ChangeList> list = main.commandActions.get(sender);
         if (list == null || list.isEmpty()) {
             sender.sendMessage(Constants.NO_RECORDS);
@@ -98,7 +93,7 @@ public final class Commands implements BaseCommand {
                 redo.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/nekoguard undo " + i));
                 final TextComponent t = new TextComponent(" " + ++i + ". ");
                 t.setColor(ChatColor.GRAY);
-                sender.spigot().sendMessage(
+                sender.sendMessage(
                     Constants.SPACE,
                     redo,
                     t,
@@ -116,7 +111,7 @@ public final class Commands implements BaseCommand {
         @Command("chat")
         @Permission("nekoguard.lookup.chat")
         public void lookupChats(
-            @NotNull final CommandSender sender,
+            @NotNull final ProxiedCommandSender sender,
             @Argument({ "t", "time" }) final String time,
             @Nullable @Argument(value = { "p", "player" }, completer = PlayersCompleter.class) final String player
         ) {
@@ -127,7 +122,7 @@ public final class Commands implements BaseCommand {
         @Command("command")
         @Permission("nekoguard.lookup.command")
         public void lookupCommands(
-            @NotNull final CommandSender sender,
+            @NotNull final ProxiedCommandSender sender,
             @Nullable @Argument({ "t", "time" }) final String time,
             @Nullable @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class) final String performer
         ) {
@@ -143,7 +138,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
         public void lookupSessions(
-            @NotNull final CommandSender sender,
+            @NotNull final ProxiedCommandSender sender,
             @Nullable @Argument({ "t", "time" }) final String time,
             @Nullable @Argument(value = { "p", "player" }, completer = PlayersCompleter.class) String player,
             @Nullable @Argument(value = { "n", "name" }, completer = PlayersCompleter.class) final String name,
@@ -154,7 +149,7 @@ public final class Commands implements BaseCommand {
                 final WhereQueryImpl<SelectQueryImpl> query = it.where();
                 if (time != null) query.and(new SimpleTimeClause(time));
                 if (name != null) query.and(eq("name", name));
-                final String id = Utils.getPlayerUUIDByName(player, sender);
+                final String id = Utils.PLATFORM.getPlayerUUIDByName(player, sender);
                 if (id != null) query.and(eq("id", id));
                 if (near != null && near) processLocationQuery(result, query, sender);
             });
@@ -165,14 +160,14 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
         @Argument({ "t", "time" })
         @Argument(value = { "p", "performer" }, completer = PlayersCompleter.class)
-        @Argument(value = { "i", "item" }, completer = Completes.MaterialCompleter.class)
+        @Argument(value = { "i", "item" }, completer = BlocksCompleter.class)
         @Argument(value = { "g", "global" }, type = Boolean.class)
         @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
         public void lookupItemActions(
-            @NotNull final CommandSender sender,
+            @NotNull final ProxiedCommandSender sender,
             @NotNull final OptionSet result,
             @Nullable @Argument(value = "drop", type = Boolean.class) final Boolean isDrop,
             @Nullable @Argument(value = "pickup", type = Boolean.class) final Boolean isPickup
@@ -196,7 +191,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        public void lookupBlocks(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void lookupBlocks(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             messages.sendQueryBlockMessage(sender, 0, it -> {
                 if (result.has("block")) it.where(
                     regex("block", "/^(minecraft:)?" + result.valueOf("block") + "/"));
@@ -216,13 +211,13 @@ public final class Commands implements BaseCommand {
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        public void lookupEntities(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void lookupEntities(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             messages.sendQueryDeathMessage(sender, 0, it -> {
                 String type = null;
                 if (result.has("type")) type = "@" + result.valueOf("type");
                 if (result.has("player")) {
                     type = (String) result.valueOf("player");
-                    if (type.length() != 36) type = Utils.getPerformerQueryName(type, sender);
+                    if (type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
                 }
                 if (type != null) it.where(eq("type", type));
                 processQuery(result, it, sender, false);
@@ -250,7 +245,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
-        public void lookupContainer(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void lookupContainer(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             try {
                 messages.sendContainerActionsMessage(sender, 0, it -> processContainerQuery(result, it, sender, false));
             } catch (Exception e) {
@@ -263,12 +258,12 @@ public final class Commands implements BaseCommand {
     public class FetchCommand implements BaseCommand {
         @Command("action")
         @Permission("nekoguard.fetch.action")
-        public boolean fetchActionItem(final @NotNull Player sender, @NotNull final String[] args) {
+        @PlayerOnly
+        public boolean fetchActionItem(final @NotNull ProxiedCommandSender sender, @NotNull final String[] args) {
             if (args.length != 1) return false;
             try {
                 Instant.parse(args[0]);
-                api.fetchActionItemIntoInventory(sender.getInventory(), args[0],
-                    it -> sender.sendMessage(it ? Constants.SUCCESS : Constants.FAILED));
+                api.fetchItem(api.itemsRecords, args[0], it -> Utils.PLATFORM.fetchItemIntoInventory(sender, it));
                 return true;
             } catch (final Exception ignored) {
                 return false;
@@ -277,12 +272,12 @@ public final class Commands implements BaseCommand {
 
         @Command("container")
         @Permission("nekoguard.fetch.container")
-        public boolean fetchContainerItem(final @NotNull Player sender, @NotNull final String[] args) {
+        @PlayerOnly
+        public boolean fetchContainerItem(final @NotNull ProxiedCommandSender sender, @NotNull final String[] args) {
             if (args.length != 1) return false;
             try {
                 Instant.parse(args[0]);
-                api.fetchContainerItemIntoInventory(sender.getInventory(), args[0],
-                    it -> sender.sendMessage(it ? Constants.SUCCESS : Constants.FAILED));
+                api.fetchItem(api.containerRecords, args[0], it -> Utils.PLATFORM.fetchItemIntoInventory(sender, it));
                 return true;
             } catch (final Exception ignored) {
                 return false;
@@ -303,7 +298,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        public void rollbackBlocks(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void rollbackBlocks(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             try {
                 final SelectQueryImpl query = api.queryBlock().orderBy(asc());
                 processQuery(result, query, sender, true);
@@ -315,7 +310,7 @@ public final class Commands implements BaseCommand {
                         sender.sendMessage(Constants.NO_RECORDS);
                         return;
                     }
-                    final BlockChangeList list = new BlockChangeList(Mappers.BLOCKS.parse(data));
+                    final ChangeList list = Utils.PLATFORM.createBlockChangeList(Mappers.BLOCKS.parse(data));
                     main.addCommandAction(sender, list);
                     list.doChange(sendFinishMessage(sender));
                 });
@@ -345,7 +340,7 @@ public final class Commands implements BaseCommand {
         @Argument(value = { "tx", "target-x" }, type = Integer.class)
         @Argument(value = { "ty", "target-y" }, type = Integer.class)
         @Argument(value = { "tz", "target-z" }, type = Integer.class)
-        public void rollbackContainerActions(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void rollbackContainerActions(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             try {
                 final SelectQueryImpl query = api.queryContainerActions().orderBy(asc());
                 processContainerQuery(result, query, sender, true);
@@ -355,7 +350,7 @@ public final class Commands implements BaseCommand {
                         sender.sendMessage(Constants.NO_RECORDS);
                         return;
                     }
-                    final ContainerChangeList list = new ContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
+                    final ChangeList list = Utils.PLATFORM.createContainerChangeList(Mappers.CONTAINER_ACTIONS.parse(data));
                     main.addCommandAction(sender, list);
                     list.doChange(sendFinishMessage(sender));
                 });
@@ -376,14 +371,14 @@ public final class Commands implements BaseCommand {
         @Argument(value = "x", type = Integer.class)
         @Argument(value = "y", type = Integer.class)
         @Argument(value = "z", type = Integer.class)
-        public void rollbackEntities(@NotNull final CommandSender sender, @NotNull final OptionSet result) {
+        public void rollbackEntities(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             try {
                 final SelectQueryImpl query = api.queryDeath().orderBy(asc());
                 String type = null;
                 if (result.has("type")) type = "@" + result.valueOf("type");
                 if (result.has("player")) {
                     type = (String) result.valueOf("player");
-                    if (type.length() != 36) type = Utils.getPerformerQueryName(type, sender);
+                    if (type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
                 }
                 if (type != null) query.where(eq("type", type));
                 processQuery(result, query, sender, true);
@@ -393,7 +388,7 @@ public final class Commands implements BaseCommand {
                         sender.sendMessage(Constants.NO_RECORDS);
                         return;
                     }
-                    final EntityChangeList list = new EntityChangeList(Mappers.DEATHS.parse(data));
+                    final ChangeList list = Utils.PLATFORM.createEntityChangeList(Mappers.DEATHS.parse(data));
                     main.addCommandAction(sender, list);
                     list.doChange(sendFinishMessage(sender));
                 });
@@ -403,22 +398,21 @@ public final class Commands implements BaseCommand {
         }
     }
 
-    private void processLocationQuery(@NotNull final OptionSet cmd, final WhereQueryImpl<SelectQueryImpl> q, @NotNull final CommandSender sender) {
+    private void processLocationQuery(@NotNull final OptionSet cmd, final WhereQueryImpl<SelectQueryImpl> q, @NotNull final ProxiedCommandSender sender) {
         Integer lx = (Integer) cmd.valueOf("x"),
             ly = (Integer) cmd.valueOf("y"),
             lz = (Integer) cmd.valueOf("z"),
             r = (Integer) ObjectUtils.defaultIfNull(cmd.valueOf("radius"), 5);
         String world = (String) cmd.valueOf("world");
         if (world == null) {
-            if (!(sender instanceof Player)) {
+            if (sender.world == null) {
                 sender.sendMessage("请提供查询位置!");
                 throw Constants.IGNORED_ERROR;
             }
-            final Location loc = ((Player) sender).getLocation();
-            world = loc.getWorld().getName();
-            lx = loc.getBlockX();
-            ly = loc.getBlockY();
-            lz = loc.getBlockZ();
+            world = sender.world;
+            lx = (int) sender.x;
+            ly = (int) sender.y;
+            lz = (int) sender.z;
         }
         q.andNested().and(eq("world", world))
             .and(gte("x", lx - r)).and(lte("x", lx + r))
@@ -426,7 +420,7 @@ public final class Commands implements BaseCommand {
             .and(gte("z", lz - r)).and(lte("z", lz + r)).close();
     }
 
-    private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final CommandSender sender, final boolean isRollback) {
+    private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final ProxiedCommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
@@ -437,11 +431,11 @@ public final class Commands implements BaseCommand {
             query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
         }
         if (cmd.has("performer")) query.and(eq("performer",
-            Utils.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
+            Utils.PLATFORM.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
         if (!cmd.has("global")) processLocationQuery(cmd, query, sender);
     }
 
-    private void processContainerQuery(final OptionSet cmd, final SelectQueryImpl q, final CommandSender sender, final boolean isRollback) {
+    private void processContainerQuery(final OptionSet cmd, final SelectQueryImpl q, final ProxiedCommandSender sender, final boolean isRollback) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
@@ -452,7 +446,7 @@ public final class Commands implements BaseCommand {
             query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
         }
         if (cmd.has("performer")) query.and(eq("performer",
-            Utils.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
+            Utils.PLATFORM.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
         if (!cmd.has("global")) {
             Integer x = (Integer) cmd.valueOf("x"),
                 y = (Integer) cmd.valueOf("y"),
@@ -470,12 +464,11 @@ public final class Commands implements BaseCommand {
                 w = (String) cmd.valueOf("w"),
                 sw = (String) cmd.valueOf("sw"),
                 tw = (String) cmd.valueOf("tw");
-            if (w == null && sender instanceof Player) {
-                final Location loc = ((Player) sender).getLocation();
-                w = loc.getWorld().getName();
-                if (x == null) x = loc.getBlockX();
-                if (y == null) y = loc.getBlockY();
-                if (z == null) z = loc.getBlockZ();
+            if (w == null && sender.world != null) {
+                w = sender.world;
+                if (x == null) x = (int) sender.x;
+                if (y == null) y = (int) sender.y;
+                if (z == null) z = (int) sender.z;
             }
             if (se == null && te == null && sw == null && tw == null) {
                 if (e != null) query.andNested().and(eq("se", e)).or(eq("te", e)).close();
@@ -519,7 +512,7 @@ public final class Commands implements BaseCommand {
     }
 
     @NotNull
-    private Consumer<ChangeList> sendFinishMessage(@NotNull final CommandSender sender) {
+    private Consumer<ChangeList> sendFinishMessage(@NotNull final ProxiedCommandSender sender) {
         return it -> sender.sendMessage("§e[NekoGuard] §b操作完成! §7(" + it.getName() + ") §e总计操作:" +
             it.getAllCount() + " §a成功:" + it.getSuccessCount() + " §c失败:" + it.getFailed());
     }

@@ -1,4 +1,4 @@
-package cn.apisium.nekoguard.utils;
+package cn.apisium.nekoguard.bukkit.utils;
 
 import cn.apisium.nekoguard.Constants;
 import org.bukkit.command.*;

@@ -8,31 +8,19 @@ version '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
-    maven {
-        name = 'destroystokyo-repo'
-        url = 'https://repo.destroystokyo.com/repository/maven-public/'
-    }
+    maven { url 'https://www.jitpack.io' }
     maven {
         name = 'sonatype'
         url = 'https://oss.sonatype.org/content/groups/public/'
     }
-    maven { url 'https://www.jitpack.io' }
 }
 
 dependencies {
-    compileOnly 'org.spigotmc:plugin-annotations:1.2.3-SNAPSHOT'
-    compileOnly 'com.destroystokyo.paper:paper-api:1.16.1-R0.1-SNAPSHOT'
+    compileOnly 'net.md-5:bungeecord-chat:1.16-R0.4-SNAPSHOT'
     compileOnly 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
-    compile 'com.github.neko-craft:NekoCommander:3d2f80d56c'
+    compileOnly 'commons-lang:commons-lang:2.6'
+    compile 'com.github.neko-craft:NekoCommander:554a033185'
     compile ('org.influxdb:influxdb-java:2.19') {
         exclude group: 'org.jetbrains', module: 'annotations'
-    }
-
-    annotationProcessor 'org.spigotmc:plugin-annotations:1.2.3-SNAPSHOT'
-}
-
-jar {
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }

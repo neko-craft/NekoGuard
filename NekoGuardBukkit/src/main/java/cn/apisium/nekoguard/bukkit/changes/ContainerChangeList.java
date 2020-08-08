@@ -1,10 +1,11 @@
-package cn.apisium.nekoguard.changes;
+package cn.apisium.nekoguard.bukkit.changes;
 
-import cn.apisium.nekoguard.Main;
+import cn.apisium.nekoguard.ChangeList;
+import cn.apisium.nekoguard.bukkit.Main;
 import cn.apisium.nekoguard.mappers.SeriesMapper;
-import cn.apisium.nekoguard.utils.NMSUtils;
+import cn.apisium.nekoguard.bukkit.utils.*;
 import cn.apisium.nekoguard.utils.Pair;
-import cn.apisium.nekoguard.utils.Utils;
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Consumer;
 
-public final class ContainerChangeList extends ChangeList {
+public final class ContainerChangeList extends cn.apisium.nekoguard.ChangeList {
     private final ArrayList<Pair<Inventory, ItemStack>> added = new ArrayList<>();
     private final ArrayList<Pair<Inventory, ItemStack>> removed = new ArrayList<>();
     public ContainerChangeList(final SeriesMapper.Mapper mapper) {
@@ -21,9 +22,9 @@ public final class ContainerChangeList extends ChangeList {
     }
 
     @Override
-    public void doChange(@Nullable final Consumer<ChangeList> callback) {
+    public void doChange(@Nullable final Consumer<cn.apisium.nekoguard.ChangeList> callback) {
         Iterator<Object[]> iterator = mapper.all().iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator.hasNext() && i++ < 10000) {
                 final Object[] arr = iterator.next();
@@ -80,7 +81,7 @@ public final class ContainerChangeList extends ChangeList {
     @Override
     public void undo(@Nullable final Consumer<ChangeList> callback) {
         final Iterator<Pair<Inventory, ItemStack>> iterator0 = added.iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator0.hasNext() && i++ < 10000) {
                 final Pair<Inventory, ItemStack> pair = iterator0.next();
@@ -92,7 +93,7 @@ public final class ContainerChangeList extends ChangeList {
             }
         }, 0, 2);
         final Iterator<Pair<Inventory, ItemStack>> iterator1 = removed.iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator1.hasNext() && i++ < 10000) {
                 final Pair<Inventory, ItemStack> pair = iterator1.next();

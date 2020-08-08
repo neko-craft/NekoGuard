@@ -1,6 +1,8 @@
-package cn.apisium.nekoguard.changes;
+package cn.apisium.nekoguard.bukkit.changes;
 
-import cn.apisium.nekoguard.Main;
+import cn.apisium.nekoguard.ChangeList;
+import cn.apisium.nekoguard.bukkit.Main;
+import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.mappers.SeriesMapper;
 import cn.apisium.nekoguard.utils.*;
 import org.bukkit.Bukkit;
@@ -26,7 +28,7 @@ public final class BlockChangeList extends ChangeList {
     private final ArrayList<Tuple<Block, BlockData, Object>> redoList = new ArrayList<>(mapper.count);
 
     @Override
-    public void doChange(@Nullable final Consumer<ChangeList> callback) {
+    public void doChange(@Nullable final Consumer<cn.apisium.nekoguard.ChangeList> callback) {
         final HashCodeMap<KeyedChunk, HashCodeMap<Vector, Object[]>> map = new HashCodeMap<>();
         for (final Object[] arr : mapper.allArray()) {
             final String world = (String) arr[4];
@@ -43,7 +45,7 @@ public final class BlockChangeList extends ChangeList {
             }
         }
         final Iterator<Map.Entry<KeyedChunk, HashCodeMap<Vector, Object[]>>> iterator = map.entrySet().iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator.hasNext() && i++ < 50000) {
                 final Map.Entry<KeyedChunk, HashCodeMap<Vector, Object[]>> entry = iterator.next();
@@ -59,7 +61,7 @@ public final class BlockChangeList extends ChangeList {
                     final Block block = chunk.getBlock(k.x, k.y, k.z);
                     if (v[1].equals("0")) {
                         redoList.add(new Tuple<>(block, null, null));
-                        Utils.patchDataToBlock(block, (String) v[0]);
+                        NMSUtils.patchDataToBlock(block, (String) v[0]);
                     } else if (!block.getType().isAir() && block.getType().getKey().toString().equals(v[0])) {
                         block.setType(Material.AIR);
                         final BlockState state = block.getState();
@@ -81,7 +83,7 @@ public final class BlockChangeList extends ChangeList {
     @Override
     public void undo(@Nullable final Consumer<ChangeList> callback) {
         final Iterator<Tuple<Block, BlockData, Object>> iterator = redoList.iterator();
-        Main.getInstance().getServer().getScheduler().runTaskTimer(Main.getInstance(), it -> {
+        Bukkit.getScheduler().runTaskTimer(Main.getPlugin(), it -> {
             int i = 0;
             while (iterator.hasNext() && i++ < 50000) {
                 final Tuple<Block, BlockData, Object> tuple = iterator.next();

@@ -1,18 +1,6 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.*;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.data.type.Piston;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.influxdb.InfluxDB;
-import org.influxdb.dto.BatchPoints;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
@@ -20,7 +8,6 @@ import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -34,11 +21,11 @@ public final class API {
     private final String blockRecords;
     private final String spawnRecords;
     private final String commandRecords;
-    private final String containerRecords;
-    private final String itemsRecords;
+    protected final String containerRecords;
+    protected final String itemsRecords;
     private final String sessionsRecords;
-    private ArrayList<ContainerAction> containerActionList = new ArrayList<>();
     private long curTime = Utils.getCurrentTime();
+    protected final Thread thread;
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
 
     API(final String prefix, final Main plugin) {
@@ -52,46 +39,15 @@ public final class API {
         itemsRecords = prefix + "Items";
         sessionsRecords = prefix + "Sessions";
 
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> curTime = Utils.getCurrentTime(), 0, 1);
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            final ArrayList<ContainerAction> list = containerActionList;
-            if (list.isEmpty()) return;
-            containerActionList = new ArrayList<>();
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> list.forEach(it -> {
-                final Point.Builder builder = Point.measurement(containerRecords)
-                    .addField("item", NMSUtils.serializeItemStack(it.item))
-                    .time(it.time, TimeUnit.NANOSECONDS);
-                if (it.sourceWorld == null) {
-                    if (it.sourceEntity != null) builder
-                        .tag("se", it.sourceEntity)
-                        .tag("sw", "")
-                        .addField("sx", (Number) null)
-                        .addField("sy", (Number) null)
-                        .addField("sz", (Number) null);
-                } else builder
-                    .tag("se", "")
-                    .tag("sw", it.sourceWorld)
-                    .addField("sx", it.sourceX)
-                    .addField("sy", it.sourceY)
-                    .addField("sz", it.sourceZ);
-                if (it.targetWorld == null) {
-                    if (it.targetEntity != null) builder
-                        .tag("te", it.targetEntity)
-                        .tag("tw", "")
-                        .addField("tx", (Number) null)
-                        .addField("ty", (Number) null)
-                        .addField("tz", (Number) null);
-                } else {
-                    builder
-                        .tag("te", "")
-                        .tag("tw", it.targetWorld)
-                        .addField("tx", it.targetX)
-                        .addField("ty", it.targetY)
-                        .addField("tz", it.targetZ);
-                }
-                db.write(builder.build());
-            }));
-        }, 0, 1);
+        thread = new Thread(() -> {
+            curTime = Utils.getCurrentTime();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        thread.start();
     }
 
     public void recordChat(@NotNull final String msg, @NotNull final String performer) {
@@ -123,12 +79,12 @@ public final class API {
         );
     }
 
-    public void recordItemAction(@NotNull final ItemStack is, final boolean isDrop, @NotNull final String performer, @NotNull final String world, final double x, final double y, final double z) {
+    public void recordItemAction(@NotNull final String item, final boolean isDrop, @NotNull final String performer, @NotNull final String world, final double x, final double y, final double z) {
         db.write(Point.measurement(itemsRecords)
             .tag("performer", performer)
             .tag("world", world)
             .tag("action", isDrop ? "0" : "1")
-            .addField("item", NMSUtils.serializeItemStack(is))
+            .addField("item", item)
             .addField("x", x)
             .addField("y", y)
             .addField("z", z)
@@ -137,120 +93,75 @@ public final class API {
         );
     }
 
-    public void recordSpawn(@NotNull final Entity entity, @Nullable final String reason) {
-        final Location loc = entity.getLocation();
+    public void recordSpawn(@NotNull final String type, @Nullable final String reason, @NotNull final String world, final int x, final int y, final int z, @NotNull final String id) {
         final Point.Builder builder = Point.measurement(spawnRecords)
-            .tag("type", entity.getType().getKey().toString())
-            .tag("world", loc.getWorld().getName())
-            .addField("x", loc.getBlockX())
-            .addField("y", loc.getBlockY())
-            .addField("z", loc.getBlockZ())
-            .addField("id", entity.getUniqueId().toString())
+            .tag("type", type)
+            .tag("reason", reason == null ? "" : reason)
+            .tag("world", world)
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
+            .addField("id", id)
             .time(curTime++, TimeUnit.NANOSECONDS);
-        if (reason != null) builder.tag("reason", reason);
         db.write(builder.build());
     }
 
-    public void recordDeath(@NotNull final String performer, @NotNull final Entity entity, @NotNull final String cause) {
-        final Location loc = entity.getLocation();
+    public void recordDeath(@NotNull final String performer, @NotNull final String cause, @NotNull final String type, @NotNull final String world, @NotNull final String data, final int x, final int y, final int z) {
         db.write(Point.measurement(deathRecords)
             .tag("performer", performer)
             .tag("cause", cause)
-            .tag("type", '@' + entity.getType().getKey().toString())
-            .tag("world", loc.getWorld().getName())
-            .addField("entity", ZERO_HEALTH.matcher(NMSUtils.serializeEntity(entity)).replaceAll(""))
-            .addField("x", loc.getBlockX())
-            .addField("y", loc.getBlockY())
-            .addField("z", loc.getBlockZ())
+            .tag("type", '@' + type)
+            .tag("world", world)
+            .addField("entity", ZERO_HEALTH.matcher(data).replaceAll(""))
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
     }
-    public void recordPlayerDeath(@NotNull final String performer, @NotNull final Player player, @NotNull final String cause, final int exp) {
-        final Location loc = player.getLocation();
+    public void recordPlayerDeath(@NotNull final String performer, @NotNull final String cause, @NotNull final String id, @NotNull final String world, final int x, final int y, final int z, final int exp) {
         db.write(Point.measurement(deathRecords)
             .tag("performer", performer)
             .tag("cause", cause)
-            .tag("type", player.getUniqueId().toString())
-            .tag("world", loc.getWorld().getName())
+            .tag("type", id)
+            .tag("world", world)
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
             .addField("entity", String.valueOf(exp))
-            .addField("x", loc.getBlockX())
-            .addField("y", loc.getBlockY())
-            .addField("z", loc.getBlockZ())
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
     }
 
-    public void recordPlayerSession(@NotNull final Player player, final boolean isLogin) {
-        final Location loc = player.getLocation();
+    public void recordPlayerSession(@NotNull final String id, @NotNull final String name, final boolean isLogin, @NotNull final String world, final int x, final int y, final int z, @NotNull final String address) {
         db.write(Point.measurement(sessionsRecords)
-            .tag("id", player.getUniqueId().toString())
-            .tag("name", player.getName())
+            .tag("id", id)
+            .tag("name", name)
             .tag("action", isLogin ? "0" : "1")
-            .tag("world", loc.getWorld().getName())
-            .addField("x", loc.getBlockX())
-            .addField("y", loc.getBlockY())
-            .addField("z", loc.getBlockZ())
+            .tag("world", world)
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
+            .addField("address", address)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
     }
 
-    public void recordBlockBreak(@NotNull final Block block, @NotNull final String performer) {
-        recordBlockBreak(block.getState(), performer);
-    }
-    public void recordBlockBreak(@NotNull final Block block, @NotNull final Player performer) {
-        recordBlockBreak(block.getState(), performer.getUniqueId().toString());
-    }
-    public void recordBlockBreak(@NotNull final BlockState block, @NotNull final String performer) {
+    public void recordBlockAction(@NotNull final String performer, final boolean isBreak, @NotNull final String world, final int x, final int y, final int z, @NotNull final String block) {
         db.write(Point.measurement(blockRecords)
-                .tag("world", block.getWorld().getName())
-                .tag("performer", performer)
-                .tag("action", Constants.BLOCK_ACTION_BREAK)
-                .addField("x", block.getX())
-                .addField("y", block.getY())
-                .addField("z", block.getZ())
-                .addField("block", Utils.getFullBlockData(block))
-                .time(curTime++, TimeUnit.NANOSECONDS)
-                .build()
-        );
-    }
-
-    public void recordBlockPlace(@NotNull final Block block, @NotNull final Player performer) {
-        recordBlockPlace(block.getState(), performer.getUniqueId().toString());
-    }
-    public void recordBlockPlace(@NotNull final BlockState block, @NotNull final String performer) {
-        recordBlockPlace(block, block.getType(), performer);
-    }
-    public void recordBlockPlace(@NotNull final BlockState block, final Material type, @NotNull final String performer) {
-        db.write(Point.measurement(blockRecords)
-            .tag("world", block.getWorld().getName())
             .tag("performer", performer)
-            .tag("action", Constants.BLOCK_ACTION_PLACE)
-            .addField("x", block.getX())
-            .addField("y", block.getY())
-            .addField("z", block.getZ())
-            .addField("block", type.getKey().toString())
+            .tag("action", isBreak ? "0" : "1")
+            .tag("world", world)
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
+            .addField("block", block)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
-    }
-
-    public void recordBlocksBreak(@NotNull final List<Block> blocks, @NotNull final String performer) {
-        final BatchPoints.Builder builder = BatchPoints.database(db.database)
-            .tag("performer", performer)
-            .tag("action", Constants.BLOCK_ACTION_BREAK)
-            .consistency(InfluxDB.ConsistencyLevel.ALL);
-        for (final Block block : blocks) builder.point(Point.measurement(blockRecords)
-            .tag("world", block.getWorld().getName())
-            .addField("x", block.getX())
-            .addField("y", block.getY())
-            .addField("z", block.getZ())
-            .addField("block", Utils.getFullBlockData(block.getState()))
-            .time(curTime++, TimeUnit.NANOSECONDS)
-            .build());
-        db.instance.write(builder.build());
     }
 
     @NotNull
@@ -285,26 +196,43 @@ public final class API {
         return query;
     }
 
-    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target) {
-        if (source == null && target == null) return;
-        final ContainerAction action = new ContainerAction(is, source, target, curTime);
-        if (action.sourceEntity == null && action.sourceWorld == null && action.targetEntity == null &&
-            action.targetWorld == null) return;
-        curTime++;
-        containerActionList.add(action);
-    }
     @SuppressWarnings("unused")
-    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final String source, @Nullable final String target) {
+    public void recordContainerAction(@NotNull final String item, @Nullable final ContainerRecord source, @Nullable final ContainerRecord target) {
         if (source == null && target == null) return;
-        containerActionList.add(new ContainerAction(is, source, target, curTime++));
-    }
-    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final String target) {
-        if (source == null && target == null) return;
-        containerActionList.add(new ContainerAction(is, source, target, curTime++));
-    }
-    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final String source, @Nullable final Inventory target) {
-        if (source == null && target == null) return;
-        containerActionList.add(new ContainerAction(is, source, target, curTime++));
+        final Point.Builder builder = Point.measurement(containerRecords)
+            .addField("item", item)
+            .time(curTime++, TimeUnit.NANOSECONDS);
+        if (source != null) {
+            if (source.world == null) {
+                if (source.entity != null) builder
+                    .tag("se", source.entity)
+                    .tag("sw", "")
+                    .addField("sx", (Number) null)
+                    .addField("sy", (Number) null)
+                    .addField("sz", (Number) null);
+            } else builder
+                .tag("se", "")
+                .tag("sw", source.world)
+                .addField("sx", source.x)
+                .addField("sy", source.y)
+                .addField("sz", source.z);
+        }
+        if (target != null) {
+            if (target.world == null) {
+                if (target.entity != null) builder
+                    .tag("te", target.entity)
+                    .tag("tw", "")
+                    .addField("tx", (Number) null)
+                    .addField("ty", (Number) null)
+                    .addField("tz", (Number) null);
+            } else builder
+                .tag("te", "")
+                .tag("tw", target.world)
+                .addField("tx", target.x)
+                .addField("ty", target.y)
+                .addField("tz", target.z);
+        }
+        db.write(builder.build());
     }
 
     @NotNull
@@ -393,27 +321,14 @@ public final class API {
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 
-    public void fetchActionItemIntoInventory(@NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
-        fetchItemIntoInventory(itemsRecords, inv, time, callback);
-    }
-    public void fetchContainerItemIntoInventory(@NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
-        fetchItemIntoInventory(containerRecords, inv, time, callback);
-    }
-    public void fetchItemIntoInventory(@NotNull final String table, @NotNull final Inventory inv, @NotNull final String time, @Nullable final Consumer<Boolean> callback) {
+    @SuppressWarnings("unused")
+    public void fetchItem(@NotNull final String table, @NotNull final String time, @NotNull final Consumer<String> callback) {
         db.query(select("item").from(db.database, table).where(eq("time", time)), res -> {
             final QueryResult.Series data = Utils.getFirstResult(res);
-            if (data == null || data.getValues().size() == 0) {
-                if (callback != null) callback.accept(false);
-                return;
-            }
-            final ItemStack is = NMSUtils.deserializeItemStack((String) data.getValues().get(0)
-                .get("item".equals(data.getColumns().get(0)) ? 0 : 1));
-            if (is == null) {
-                if (callback != null) callback.accept(false);
-            } else {
-                inv.addItem(is);
-                if (callback != null) callback.accept(true);
-            }
+            callback.accept(data == null || data.getValues().size() == 0
+                ? null
+                : (String) data.getValues().get(0).get("item".equals(data.getColumns().get(0)) ? 0 : 1)
+            );
         });
     }
 
