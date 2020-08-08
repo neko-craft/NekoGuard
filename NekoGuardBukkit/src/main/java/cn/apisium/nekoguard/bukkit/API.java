@@ -2,6 +2,8 @@ package cn.apisium.nekoguard.bukkit;
 
 import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.bukkit.utils.Utils;
+import cn.apisium.nekoguard.utils.ContainerRecord;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -16,13 +18,24 @@ import java.util.*;
 
 public final class API {
     private final cn.apisium.nekoguard.API front;
+    private ArrayList<Object[]> itemsList = new ArrayList<>();
     API(final cn.apisium.nekoguard.API front) {
         this.front = front;
+        Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> {
+            if (itemsList.isEmpty()) return;
+            final ArrayList<Object[]> list = itemsList;
+            itemsList = new ArrayList<>();
+            list.forEach(it -> front.recordContainerAction(
+                NMSUtils.serializeItemStack((ItemStack) it[0]),
+                (ContainerRecord) it[1], (ContainerRecord) it[2], (long) it[3]
+            ));
+        }, 1, 1);
     }
 
     public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target) {
         if (source == null && target == null) return;
-        front.recordContainerAction(NMSUtils.serializeItemStack(is), Utils.getContainerRecord(source), Utils.getContainerRecord(target));
+        itemsList.add(new Object[] { is.clone(), Utils.getContainerRecord(source),
+            Utils.getContainerRecord(target), front.getCurrentTime() });
     }
 
     public void recordDeath(@NotNull final String performer, @NotNull final String cause, @NotNull final Entity entity) {

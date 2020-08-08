@@ -197,11 +197,11 @@ public final class API {
     }
 
     @SuppressWarnings("unused")
-    public void recordContainerAction(@NotNull final String item, @Nullable final ContainerRecord source, @Nullable final ContainerRecord target) {
+    public void recordContainerAction(@NotNull final String item, @Nullable final ContainerRecord source, @Nullable final ContainerRecord target, final long time) {
         if (source == null && target == null) return;
         final Point.Builder builder = Point.measurement(containerRecords)
             .addField("item", item)
-            .time(curTime++, TimeUnit.NANOSECONDS);
+            .time(time, TimeUnit.NANOSECONDS);
         if (source != null) {
             if (source.world == null) {
                 if (source.entity != null) builder
@@ -347,4 +347,6 @@ public final class API {
         final SelectQueryImpl query = querySession();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
+
+    public long getCurrentTime() { return curTime++; }
 }
