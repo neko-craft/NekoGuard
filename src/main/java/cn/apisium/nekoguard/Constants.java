@@ -10,7 +10,6 @@ public final class Constants {
     public static boolean IS_PAPER;
     public static final String TILE = "§TILE§";
     public static final String PLAYER_NOT_EXISTS = "§e[NekoGuard] §c该玩家还从未在本服务器游玩过!";
-    public static final String BLOCK_ACTION_BREAK = "0", BLOCK_ACTION_PLACE = "1";
     public static final String HEADER = "§b§m                     §r §e[NekoGuard] §b§m                     ",
         FOOTER = "§b§m                                                           ";
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
@@ -21,6 +20,7 @@ public final class Constants {
     public static final String IN_INSPECTING = "§e[NekoGuard] §b您当前正处于审查模式!";
     public static final String NO_RECORDS = "§e[NekoGuard] §c当前没有任何记录!";
     public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("§c点击这里将会直接撤销操作!");
+    public static final HoverEvent COPY_HOVER = Utils.genTextHoverEvent("点击这里可以直接复制!");
 
     static {
         UNKNOWN.setColor(ChatColor.GRAY);

@@ -6,7 +6,7 @@ import com.google.common.base.Strings;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.*;
 import net.md_5.bungee.chat.ComponentSerializer;
-import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 @SuppressWarnings("deprecation")
 public final class Utils {
     public static PlatformImpl PLATFORM = null;
+    private final static TextComponent EMPTY = new TextComponent();
     private final static Pattern CUSTOM_NAME = Pattern.compile("CustomName:'(.+?)(?<!\\\\)'");
     private final static SimpleDateFormat FORMATTER = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private Utils() {}
@@ -105,15 +106,6 @@ public final class Utils {
     public static TextComponent getPlayerNameComponentWithUUID(@NotNull final String name, @NotNull final String id, final boolean pad) {
         final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
         t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, id));
-        t.setHoverEvent(genTextHoverEvent(id));
-        return t;
-    }
-
-    @NotNull
-    public static TextComponent getPlayerPerformerNameComponent(@NotNull String name, @NotNull final String id, final boolean pad) {
-        name = (String) ObjectUtils.defaultIfNull(name, "Î´ÖªÍæ¼Ò");
-        final TextComponent t = new TextComponent(pad ? padPlayerName(name) : name);
-        t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, name));
         t.setHoverEvent(genTextHoverEvent(id));
         return t;
     }
@@ -331,6 +323,25 @@ public final class Utils {
         final TextComponent t = new TextComponent(prefix == null ? text : prefix + text);
         t.setColor(ChatColor.GRAY);
         t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, text));
+        return t;
+    }
+
+    public static TextComponent getAddressComponent(String text, final boolean hasPerm) {
+        if (text == null || text.isEmpty()) return EMPTY;
+        if (!hasPerm) {
+            final String[] ret = text.split("\\.");
+            if (ret.length == 4) text = ret[0] + "." + ret[1] + ".¡ìk***¡ì7.¡ìk***";
+            else {
+                final int len = text.length() / 2;
+                text = text.substring(0, len) + "¡ìk" + StringUtils.repeat("*", len);
+            }
+        }
+        final TextComponent t = new TextComponent(text);
+        if (hasPerm) {
+            t.setHoverEvent(Constants.COPY_HOVER);
+            t.setClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, text));
+        }
+        t.setColor(ChatColor.GRAY);
         return t;
     }
 }

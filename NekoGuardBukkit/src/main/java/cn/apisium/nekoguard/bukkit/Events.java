@@ -130,7 +130,9 @@ public final class Events implements Listener {
         final Block b = e.getClickedBlock();
         if (!e.hasBlock() || b == null || e.getAction() == Action.PHYSICAL ||
             (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
-            !main.isInspecting(p)) return;
+            !main.isInspecting(p)) {
+            return;
+        }
         e.setCancelled(true);
         final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(p);
         if (b.getState() instanceof Container) messages.sendContainerActionsMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
@@ -140,8 +142,8 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryMoveItem(final InventoryMoveItemEvent e) {
         if (e.getDestination() == e.getSource() ||
-            Utils.isNeedToRecordContainerAction(e.getSource().getType()) ||
-            Utils.isNeedToRecordContainerAction(e.getDestination().getType())) return;
+            !Utils.isNeedToRecordContainerAction(e.getSource().getType()) ||
+            !Utils.isNeedToRecordContainerAction(e.getDestination().getType())) return;
         api.recordContainerAction(e.getItem().clone(), e.getSource(), e.getDestination());
     }
 
@@ -267,7 +269,7 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntitySpawn(final EntitySpawnEvent e) {
         final Entity entity = e.getEntity();
-        if (e.getEntity() instanceof LeashHitch || (cn.apisium.nekoguard.Constants.IS_PAPER &&
+        if (e.getEntity() instanceof LeashHitch || (!plugin.recordEntitiesNaturalSpawn && cn.apisium.nekoguard.Constants.IS_PAPER &&
             entity.getEntitySpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL)) return;
         if (entity instanceof Animals || entity instanceof Hanging || entity instanceof Fish ||
             entity instanceof ArmorStand || entity instanceof Golem || entity instanceof Villager ||

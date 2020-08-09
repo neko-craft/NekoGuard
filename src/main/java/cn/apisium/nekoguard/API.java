@@ -8,6 +8,8 @@ import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -25,7 +27,7 @@ public final class API {
     protected final String itemsRecords;
     private final String sessionsRecords;
     private long curTime = Utils.getCurrentTime();
-    protected final Thread thread;
+    protected final Timer timer;
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
 
     API(final String prefix, final Main plugin) {
@@ -39,15 +41,13 @@ public final class API {
         itemsRecords = prefix + "Items";
         sessionsRecords = prefix + "Sessions";
 
-        thread = new Thread(() -> {
-            curTime = Utils.getCurrentTime();
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        timer = new Timer("NekoGuard-Timer");
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                curTime = Utils.getCurrentTime();
             }
-        });
-        thread.start();
+        }, 50);
     }
 
     public void recordChat(@NotNull final String msg, @NotNull final String performer) {

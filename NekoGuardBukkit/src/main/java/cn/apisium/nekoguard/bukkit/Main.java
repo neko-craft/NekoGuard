@@ -31,6 +31,7 @@ import java.util.*;
     @Permission(name = "nekoguard.lookup.death"),
     @Permission(name = "nekoguard.lookup.container"),
     @Permission(name = "nekoguard.lookup.session"),
+    @Permission(name = "nekoguard.lookup.session.address"),
     @Permission(name = "nekoguard.fetch.action"),
     @Permission(name = "nekoguard.fetch.container"),
     @Permission(name = "nekoguard.rollback.block"),
@@ -44,6 +45,7 @@ public final class Main extends JavaPlugin {
     private static Main PLUGIN;
     private API api;
     protected boolean recordMonsterKilledWithoutCustomName;
+    protected boolean recordEntitiesNaturalSpawn;
 
     { PLUGIN = this; }
 
@@ -58,6 +60,7 @@ public final class Main extends JavaPlugin {
             setEnabled(false);
             return;
         }
+        recordEntitiesNaturalSpawn = getConfig().getBoolean("recordEntitiesNaturalSpawn", false);
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,

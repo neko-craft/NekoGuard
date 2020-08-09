@@ -163,7 +163,7 @@ public final class NMSUtils {
 
     public static void patchDataToBlock(@NotNull final Block block, @NotNull final String data) {
         final String[] arr = data.split(Constants.TILE, 2);
-        block.setBlockData(Bukkit.createBlockData(arr[0]));
+        block.setBlockData(Bukkit.createBlockData(arr[0]), false);
         if (arr.length == 2) NMSUtils.loadTileStateData(block, arr[1]);
     }
 }

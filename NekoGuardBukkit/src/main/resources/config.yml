@@ -7,3 +7,4 @@ retentionPolicy: ''
 
 commandActionHistoryCount: 3
 recordMonsterKilledWithoutCustomName: false
+recordEntitiesNaturalSpawn: 3

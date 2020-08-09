@@ -359,12 +359,15 @@ public final class Messages {
             final SeriesMapper.Mapper mapper = Mappers.SESSIONS.parse(data);
             sender.sendMessage(Constants.HEADER);
             final long now = Instant.now().toEpochMilli();
-            for (final Object[] arr : mapper.all()) sender.sendMessage(
-                Utils.getActionComponentOfLocation("0".equals(arr[3]), (String) arr[4], ((Double) arr[5]).intValue(),
-                    ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
-                Utils.getPlayerNameComponentWithUUID((String) arr[2], (String) arr[1], true),
-                Utils.getTimeComponent((String) arr[0], now)
-            );
+            for (final Object[] arr : mapper.all()) {
+                sender.sendMessage(
+                    Utils.getActionComponentOfLocation("0".equals(arr[3]), (String) arr[4], ((Double) arr[5]).intValue(),
+                        ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
+                    Utils.getPlayerNameComponentWithUUID((String) arr[2], (String) arr[1], true),
+                    Utils.getAddressComponent((String) arr[8], !sender.hasPermission("nekoguard.lookup.session.address")),
+                    Utils.getTimeComponent((String) arr[0], now)
+                );
+            }
             sender.sendMessage(Constants.makeFooter(page, all));
         })));
         main.addCommandHistory(sender, it -> sendSessionMessage(sender, it, fn));

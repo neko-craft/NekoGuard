@@ -44,8 +44,8 @@ public final class Main {
     }
 
     public void onDisable() {
-        if (!api.thread.isInterrupted()) api.thread.interrupt();
         db.instance.close();
+        api.timer.cancel();
     }
 
     @SuppressWarnings("unused")
@@ -59,6 +59,7 @@ public final class Main {
     public API getApi() { return api; }
 
     @NotNull
+    @SuppressWarnings("unused")
     public static Main getInstance() { return INSTANCE; }
 
     public void addCommandAction(final ProxiedCommandSender sender, final ChangeList list) {
