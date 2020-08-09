@@ -9,6 +9,7 @@ import cn.apisium.nekoguard.bukkit.utils.Utils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
+import org.bukkit.block.data.type.RedstoneWire;
 import org.bukkit.command.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -22,6 +23,7 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.vehicle.*;
+import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -112,11 +114,10 @@ public final class Events implements Listener {
     public void onEntityChangeBlock(final EntityChangeBlockEvent e) {
         final String id = "@" + e.getEntityType().getKey();
         api.recordBlockAction(e.getBlock(), id, true);
-        if (!e.getTo().isAir()) {
-            final Block block = e.getBlock();
-            frontApi.recordBlockAction(id, false, block.getWorld().getName(), block.getX(), block.getY(),
-                block.getZ(), e.getTo().getKey().toString());
-        }
+        if (e.getTo().isAir()) return;
+        final Block block = e.getBlock();
+        frontApi.recordBlockAction(id, false, block.getWorld().getName(), block.getX(), block.getY(),
+            block.getZ(), e.getTo().getKey().toString());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -128,15 +129,43 @@ public final class Events implements Listener {
     public void onPlayerInteract(final PlayerInteractEvent e) {
         final Player p = e.getPlayer();
         final Block b = e.getClickedBlock();
-        if (!e.hasBlock() || b == null || e.getAction() == Action.PHYSICAL ||
-            (e.hasItem() && e.getAction() == Action.RIGHT_CLICK_BLOCK) ||
-            !main.isInspecting(p)) {
+        final ItemStack item = e.getItem();
+        if (b == null) return;
+        if (e.getAction() == Action.PHYSICAL && b.getType() == Material.FARMLAND) {
+            api.recordBlockAction(b, p, true);
             return;
         }
-        e.setCancelled(true);
-        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(p);
-        if (b.getState() instanceof Container) messages.sendContainerActionsMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-        else messages.sendQueryBlockMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+        if ((item != null || e.getAction() != Action.RIGHT_CLICK_BLOCK) && main.isInspecting(p)) {
+            e.setCancelled(true);
+            final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(p);
+            if (b.getState() instanceof Container) messages.sendContainerActionsMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            else messages.sendQueryBlockMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            return;
+        }
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK) switch (b.getType()) {
+            case LECTERN: {
+                if (item == null || item.getType() != Material.WRITTEN_BOOK) return;
+                api.recordBlockAction(b, p, true);
+                return;
+            }
+            case REDSTONE_WIRE: {
+                final RedstoneWire data = (RedstoneWire) b.getBlockData();
+                final RedstoneWire.Connection c = data.getFace(BlockFace.EAST);
+                if (c != data.getFace(BlockFace.NORTH) || c != data.getFace(BlockFace.SOUTH) ||
+                    c != data.getFace(BlockFace.WEST)) return;
+            }
+            case REPEATER:
+            case COMPARATOR:
+            case NOTE_BLOCK:
+            case DAYLIGHT_DETECTOR:
+                api.recordBlockAction(b, p, true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityInteract(final EntityInteractEvent e) {
+        if (e.getEntityType() != EntityType.PLAYER && e.getBlock().getType() == Material.FARMLAND)
+            api.recordBlockAction(e.getBlock(), '@' + e.getEntity().getUniqueId().toString(), true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -308,5 +337,17 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(final PlayerQuitEvent e) {
         api.recordPlayerSession(e.getPlayer(), false);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTakeLecternBook(final PlayerTakeLecternBookEvent e) {
+        api.recordBlockAction(e.getLectern().getBlock(), e.getPlayer(), true);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockDispense(final BlockDispenseEvent e) {
+        final BlockState state = e.getBlock().getState();
+        if (!(state instanceof BlockInventoryHolder)) return;
+        api.recordContainerAction(e.getItem(), ((BlockInventoryHolder) state).getInventory(), null);
     }
 }
