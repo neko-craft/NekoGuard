@@ -17,6 +17,6 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/libs/NekoGuard*
+          file: NekoGuardBukkit/build/libs/NekoGuard*
           asset_name: NekoGuard.jar
           tag: ${{ github.ref }}
