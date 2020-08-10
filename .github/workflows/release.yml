@@ -5,19 +5,18 @@ on:
       - created
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-java@v1
         with:
           java-version: 8
       - name: Build
-        run: chmod u+x gradlew && ./gradlew NekoGuardBukkit:jar
+        run: gradlew.bat NekoGuardBukkit:jar
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: NekoGuardBukkit/build/libs/NekoGuard*
+          file: build/libs/NekoGuardBukkit-1.0-SNAPSHOT.jar
           asset_name: NekoGuard.jar
           tag: ${{ github.ref }}
-          file_glob: true

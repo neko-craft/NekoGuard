@@ -2,9 +2,17 @@
 
 See also: [NekoGuardFabric](https://github.com/neko-craft/NekoGuardFabric)
 
+## Download
+
+[Release](https://github.com/neko-craft/NekoGuard/releases)
+
+## Documents
+
+[Wiki](https://github.com/neko-craft/NekoGuard/wiki)
+
 ## Requirements
 
-- InfluxDB
+- [InfluxDB](https://www.influxdata.com/products/influxdb-overview/)
 
 ## Build
 
