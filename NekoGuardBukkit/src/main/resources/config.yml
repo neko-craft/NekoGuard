@@ -5,6 +5,7 @@ database: 'NekoGuard'
 measurementPrefix: ''
 retentionPolicy: ''
 
+commandSpeedLimit: 500
 commandActionHistoryCount: 3
 recordMonsterKilledWithoutCustomName: false
 recordEntitiesNaturalSpawn: 3

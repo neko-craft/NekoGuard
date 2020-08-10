@@ -24,6 +24,7 @@ public final class Main {
     public Main(
         @NotNull final String url,
         final int commandActionHistoryCount,
+        final int commandSpeedLimit,
         @NotNull final String database,
         @Nullable final String username,
         @Nullable final String password,
@@ -41,6 +42,24 @@ public final class Main {
             .setDefaultPermissionMessage("§c你没有足够的权限来执行当前指令!")
             .setDefaultUsage("§c指令用法错误!")
             .registerCommand(new cn.apisium.nekoguard.Commands(this));
+        if (commandSpeedLimit > 0) {
+            final WeakHashMap<ProxiedCommandSender, Long> map = new WeakHashMap<>();
+            commander.onPreCommand((a, b, c, d) -> {
+                if (a.hasPermission("nekoguard.commandlimit")) return true;
+                final long time = System.currentTimeMillis();
+                if (!map.containsKey(a)) {
+                    map.put(a, time);
+                    return true;
+                }
+                if (map.get(a) + commandSpeedLimit > time) {
+                    a.sendMessage(Constants.COMMAND_LIMIT);
+                    return false;
+                } else {
+                    map.put(a, time);
+                    return true;
+                }
+            });
+        }
     }
 
     public void onDisable() {

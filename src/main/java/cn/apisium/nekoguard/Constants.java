@@ -19,6 +19,7 @@ public final class Constants {
     public static final String SUCCESS = "§e[NekoGuard] §a操作成功!", FAILED = "§e[NekoGuard] §c操作失败!";
     public static final String IN_INSPECTING = "§e[NekoGuard] §b您当前正处于审查模式!";
     public static final String NO_RECORDS = "§e[NekoGuard] §c当前没有任何记录!";
+    public static final String COMMAND_LIMIT = "§e[NekoGuard] §c执行命令的速度太快!";
     public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("§c点击这里将会直接撤销操作!");
     public static final HoverEvent COPY_HOVER = Utils.genTextHoverEvent("点击这里可以直接复制!");
 

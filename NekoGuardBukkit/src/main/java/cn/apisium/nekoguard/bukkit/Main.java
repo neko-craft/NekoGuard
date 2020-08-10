@@ -36,7 +36,8 @@ import java.util.*;
     @Permission(name = "nekoguard.fetch.container"),
     @Permission(name = "nekoguard.rollback.block"),
     @Permission(name = "nekoguard.rollback.container"),
-    @Permission(name = "nekoguard.rollback.entity")
+    @Permission(name = "nekoguard.rollback.entity"),
+    @Permission(name = "nekoguard.commandlimit")
 })
 public final class Main extends JavaPlugin {
     private static cn.apisium.nekoguard.Main INSTANCE;
@@ -63,6 +64,7 @@ public final class Main extends JavaPlugin {
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,
             getConfig().getInt("commandActionHistoryCount", 3),
+            getConfig().getInt("commandSpeedLimit", 500),
             Objects.requireNonNull(getConfig().getString("database")),
             getConfig().getString("username"),
             getConfig().getString("password", ""),
