@@ -23,13 +23,13 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.vehicle.*;
-import org.bukkit.inventory.BlockInventoryHolder;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.Collection;
+import java.util.List;
 
 public final class Events implements Listener {
     private final cn.apisium.nekoguard.API frontApi;
@@ -37,6 +37,8 @@ public final class Events implements Listener {
     private final cn.apisium.nekoguard.Main main;
     private final Messages messages;
     private final cn.apisium.nekoguard.bukkit.Main plugin;
+    private static final String IGNITER_KEY = "nekoguard.igniter";
+
     Events(final cn.apisium.nekoguard.bukkit.Main plugin) {
         main = Main.getInstance();
         frontApi = main.getApi();
@@ -62,12 +64,16 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityExplode(final EntityExplodeEvent e) {
         Entity entity = e.getEntity();
-        Entity target = null;
+        String target = null;
         int radius = 8;
         switch (e.getEntityType()) {
             case PRIMED_TNT:
-                final Entity entity1 = ((TNTPrimed) entity).getSource();
-                if (entity1 != null) target = entity1;
+                Entity entity1 = ((TNTPrimed) entity).getSource();
+                if (entity1 instanceof Projectile) {
+                    final ProjectileSource shooter = ((Projectile) entity1).getShooter();
+                    if (shooter instanceof Entity) entity1 = (Entity) shooter;
+                }
+                if (entity1 != null) target = Utils.getEntityPerformer(entity1);
                 break;
             case FIREBALL:
                 final ProjectileSource shooter = ((Fireball) entity).getShooter();
@@ -75,19 +81,23 @@ public final class Events implements Listener {
                 break;
             case CREEPER:
                 radius = ((Creeper) entity).getExplosionRadius() + 1;
+                if (entity.hasMetadata(IGNITER_KEY)) {
+                    final List<MetadataValue> list = entity.getMetadata(IGNITER_KEY);
+                    if (!list.isEmpty()) target = list.get(0).asString();
+                }
         }
-        if (target == null) target = entity instanceof Mob ? ((Mob) entity).getTarget() : null;
+        if (target == null) target = entity instanceof Mob ? Utils.getEntityPerformer(((Mob) entity).getTarget()) : null;
         final String type = Utils.getEntityPerformer(entity);
         final Location loc = e.getLocation();
         boolean isNear = false;
         if (target == null) {
             Collection<Player> c = loc.getNearbyPlayers(radius);
             if (!c.isEmpty()) {
-                target = (Player) c.toArray()[0];
+                target = ((Player) c.toArray()[0]).getUniqueId().toString();
                 isNear = true;
             }
         }
-        frontApi.recordExplosion(type, target == null ? "" : Utils.getEntityPerformer(target), isNear,
+        frontApi.recordExplosion(type, target == null ? "" : target, isNear,
             loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         if (e.blockList().isEmpty()) return;
         api.recordBlocksBreak(e.blockList(), type);
@@ -154,6 +164,17 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChat(final AsyncPlayerChatEvent e) {
         frontApi.recordChat(e.getMessage(), e.getPlayer().getUniqueId().toString());
+    }
+
+    @EventHandler
+    public void onPlayerInteractEntity(final PlayerInteractEntityEvent e) {
+        final Entity entity = e.getRightClicked();
+        if (entity.getType() != EntityType.CREEPER) return;
+        final Player player = e.getPlayer();
+        final PlayerInventory inv = player.getInventory();
+        if ((e.getHand() == EquipmentSlot.OFF_HAND ? inv.getItemInOffHand() : inv.getItemInMainHand())
+            .getType() == Material.FLINT_AND_STEEL && !entity.hasMetadata(IGNITER_KEY)) entity.setMetadata(IGNITER_KEY,
+            new FixedMetadataValue(plugin, player.getUniqueId().toString()));
     }
 
     @EventHandler
