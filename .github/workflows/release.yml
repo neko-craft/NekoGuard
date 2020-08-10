@@ -12,7 +12,7 @@ jobs:
         with:
           java-version: 8
       - name: Build
-        run: ./gradlew NekoGuardBukkit:jar
+        run: chmod u+x gradlew && ./gradlew NekoGuardBukkit:jar
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
