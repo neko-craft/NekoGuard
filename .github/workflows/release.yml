@@ -20,3 +20,4 @@ jobs:
           file: NekoGuardBukkit/build/libs/NekoGuard*
           asset_name: NekoGuard.jar
           tag: ${{ github.ref }}
+          file_glob: true
