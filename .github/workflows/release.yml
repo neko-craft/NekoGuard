@@ -12,7 +12,7 @@ jobs:
         with:
           java-version: 8
       - name: Build
-        run: start-process gradlew.bat NekoGuardBukkit:jar
+        run: ./gradlew.bat NekoGuardBukkit:jar
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
