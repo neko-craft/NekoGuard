@@ -225,6 +225,35 @@ public final class Commands implements BaseCommand {
             });
         }
 
+        @Command("explosion")
+        @Permission("nekoguard.lookup.explosion")
+        @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)
+        @Argument({ "t", "time" })
+        @Argument(value = { "a", "target" }, completer = PlayersCompleter.class)
+        @Argument(value = { "type", "player", "p" }, completer = PlayersCompleter.class)
+        @Argument(value = { "g", "global" }, type = Boolean.class)
+        @Argument(value = { "w", "world" }, completer = WorldsCompleter.class)
+        @Argument(value = "x", type = Integer.class)
+        @Argument(value = "y", type = Integer.class)
+        @Argument(value = "z", type = Integer.class)
+        public void lookupExplosions(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
+            messages.sendExplosionMessage(sender, 0, it -> {
+                String type = null;
+                if (result.has("player")) {
+                    type = (String) result.valueOf("player");
+                    if (!type.startsWith("@") && type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
+                }
+                if (type != null) it.where(eq("type", type));
+                type = null;
+                if (result.has("target")) {
+                    type = (String) result.valueOf("target");
+                    if (!type.startsWith("@") && type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
+                }
+                if (type != null) it.where(eq("target", type));
+                processQuery(result, it, sender, false);
+            });
+        }
+
         @Command("container")
         @Permission("nekoguard.lookup.container")
         @Argument(value = { "r", "radius" }, defaultValues = "5", type = Integer.class)

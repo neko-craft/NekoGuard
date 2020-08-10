@@ -359,15 +359,42 @@ public final class Messages {
             final SeriesMapper.Mapper mapper = Mappers.SESSIONS.parse(data);
             sender.sendMessage(Constants.HEADER);
             final long now = Instant.now().toEpochMilli();
-            for (final Object[] arr : mapper.all()) {
-                sender.sendMessage(
-                    Utils.getActionComponentOfLocation("0".equals(arr[3]), (String) arr[4], ((Double) arr[5]).intValue(),
-                        ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
-                    Utils.getPlayerNameComponentWithUUID((String) arr[2], (String) arr[1], true),
-                    Utils.getAddressComponent((String) arr[8], !sender.hasPermission("nekoguard.lookup.session.address")),
-                    Utils.getTimeComponent((String) arr[0], now)
-                );
+            for (final Object[] arr : mapper.all()) sender.sendMessage(
+                Utils.getActionComponentOfLocation("0".equals(arr[3]), (String) arr[4], ((Double) arr[5]).intValue(),
+                    ((Double) arr[6]).intValue(), ((Double) arr[7]).intValue()),
+                Utils.getPlayerNameComponentWithUUID((String) arr[2], (String) arr[1], true),
+                Utils.getAddressComponent((String) arr[8], sender.hasPermission("nekoguard.lookup.session.address")),
+                Utils.getTimeComponent((String) arr[0], now)
+            );
+            sender.sendMessage(Constants.makeFooter(page, all));
+        })));
+        main.addCommandHistory(sender, it -> sendSessionMessage(sender, it, fn));
+    }
+
+    public void sendExplosionMessage(@NotNull final ProxiedCommandSender sender, final int page, @Nullable final Consumer<SelectQueryImpl> fn) {
+        Objects.requireNonNull(sender);
+        final SelectQueryImpl q1 = api.queryExplosionCount(), q2 = api.queryExplosion(page);
+        if (fn != null) {
+            fn.accept(q1);
+            fn.accept(q2);
+        }
+        db.query(q1, Utils.getCountConsumer(all -> db.query(q2, res -> {
+            final QueryResult.Series data = Utils.getFirstResult(res);
+            if (data == null) {
+                sender.sendMessage(Constants.NO_RECORDS);
+                return;
             }
+            final SeriesMapper.Mapper mapper = Mappers.EXPLOSIONS.parse(data);
+            sender.sendMessage(Constants.HEADER);
+            final long now = Instant.now().toEpochMilli();
+            for (final Object[] arr : mapper.all()) sender.sendMessage(
+                Utils.getTimeComponent((String) arr[0], now),
+                Utils.getEntityTypePerformerComponent((String) arr[1], (String) arr[3], ((Double) arr[4]).intValue(),
+                    ((Double) arr[5]).intValue(), ((Double) arr[6]).intValue()),
+                Constants.TARGET,
+                Utils.getPerformerComponent((String) arr[2]),
+                "0".equals(arr[7]) ? Constants.UNCERTAIN : Constants.EMPTY
+            );
             sender.sendMessage(Constants.makeFooter(page, all));
         })));
         main.addCommandHistory(sender, it -> sendSessionMessage(sender, it, fn));

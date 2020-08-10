@@ -2,8 +2,8 @@ package cn.apisium.nekoguard.bukkit;
 
 import cn.apisium.nekocommander.impl.BukkitCommander;
 import cn.apisium.nekoguard.Constants;
+import cn.apisium.nekoguard.bukkit.utils.MetricsLite;
 import cn.apisium.nekoguard.utils.Utils;
-import org.bstats.bukkit.Metrics;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.annotation.command.Command;
@@ -76,7 +76,7 @@ public final class Main extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new Events(this), this);
 
-        new Metrics(this, 8482);
+        new MetricsLite(this, 8482);
         if (cn.apisium.nekoguard.Constants.IS_PAPER) getServer().getScheduler().runTaskTimerAsynchronously(this,
             () -> INSTANCE.inspecting.forEach((it, v) -> ((Player) it.origin).sendActionBar(Constants.IN_INSPECTING)), 20, 20);
     }

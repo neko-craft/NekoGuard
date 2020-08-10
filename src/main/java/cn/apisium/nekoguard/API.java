@@ -17,15 +17,16 @@ import java.util.regex.Pattern;
 import static org.influxdb.querybuilder.BuiltQuery.QueryBuilder.*;
 
 public final class API {
+    public final String chatRecords;
+    public final String deathRecords;
+    public final String blockRecords;
+    public final String spawnRecords;
+    public final String commandRecords;
+    public final String containerRecords;
+    public final String itemsRecords;
+    public final String sessionsRecords;
+    public final String explosionsRecords;
     private final Database db;
-    private final String chatRecords;
-    private final String deathRecords;
-    private final String blockRecords;
-    private final String spawnRecords;
-    private final String commandRecords;
-    protected final String containerRecords;
-    protected final String itemsRecords;
-    private final String sessionsRecords;
     private long curTime = Utils.getCurrentTime();
     protected final Timer timer;
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
@@ -40,6 +41,7 @@ public final class API {
         spawnRecords = prefix + "Spawns";
         itemsRecords = prefix + "Items";
         sessionsRecords = prefix + "Sessions";
+        explosionsRecords = prefix + "Explosions";
 
         timer = new Timer("NekoGuard-Timer");
         timer.schedule(new TimerTask() {
@@ -47,7 +49,7 @@ public final class API {
             public void run() {
                 curTime = Utils.getCurrentTime();
             }
-        }, 50);
+        }, 50, 50);
     }
 
     public void recordChat(@NotNull final String msg, @NotNull final String performer) {
@@ -159,6 +161,20 @@ public final class API {
             .addField("y", y)
             .addField("z", z)
             .addField("block", block)
+            .time(curTime++, TimeUnit.NANOSECONDS)
+            .build()
+        );
+    }
+
+    public void recordExplosion(@NotNull final String type, @NotNull final String target, final boolean isNear, @NotNull final String world, final int x, final int y, final int z) {
+        db.write(Point.measurement(explosionsRecords)
+            .tag("type", type)
+            .tag("target", target)
+            .tag("world", world)
+            .tag("near", isNear ? "0" : "1")
+            .addField("x", x)
+            .addField("y", y)
+            .addField("z", z)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -345,6 +361,22 @@ public final class API {
     @NotNull
     public SelectQueryImpl querySession(final int page) {
         final SelectQueryImpl query = querySession();
+        return page == 0 ? query.limit(10) : query.limit(10, page * 10);
+    }
+
+    @NotNull
+    public SelectQueryImpl queryExplosion() {
+        return select().from(db.database, explosionsRecords).orderBy(desc());
+    }
+
+    @NotNull
+    public SelectQueryImpl queryExplosionCount() {
+        return select().countAll().from(db.database, explosionsRecords);
+    }
+
+    @NotNull
+    public SelectQueryImpl queryExplosion(final int page) {
+        final SelectQueryImpl query = queryExplosion();
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 

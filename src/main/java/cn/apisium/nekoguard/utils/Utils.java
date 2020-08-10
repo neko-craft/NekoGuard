@@ -163,6 +163,12 @@ public final class Utils {
         return t;
     }
 
+    public static BaseComponent getEntityTypePerformerComponent(@NotNull final String type, @NotNull final String world, final int x, final int y, final int z) {
+        final BaseComponent t = getPerformerComponent(type);
+        processActionComponent(t, world, x, y, z);
+        return t;
+    }
+
     public static TextComponent getUnknownBlockPerformerComponent(@NotNull final String world, final int x, final int y, final int z) {
         final TextComponent t = new TextComponent("·½¿é");
         processActionComponent(t, world, x, y, z);
@@ -274,7 +280,7 @@ public final class Utils {
         processActionComponent(t, world, x, y, z);
         return t;
     }
-    public static void processActionComponent(final TextComponent t, @NotNull final String world, final int x, final int y, final int z) {
+    public static void processActionComponent(final BaseComponent t, @NotNull final String world, final int x, final int y, final int z) {
         final String loc = " " + x + " " + y + " " + z;
         t.setHoverEvent(genTextHoverEvent(Constants.TP_MESSAGE + world + loc));
         t.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp" + loc));

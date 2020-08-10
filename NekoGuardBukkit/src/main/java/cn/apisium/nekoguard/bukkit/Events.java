@@ -27,6 +27,9 @@ import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.projectiles.ProjectileSource;
+
+import java.util.Collection;
 
 public final class Events implements Listener {
     private final cn.apisium.nekoguard.API frontApi;
@@ -58,8 +61,32 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityExplode(final EntityExplodeEvent e) {
+        Entity entity = e.getEntity();
+        Entity target = null;
+        switch (e.getEntityType()) {
+            case PRIMED_TNT:
+                final Entity entity1 = ((TNTPrimed) entity).getSource();
+                if (entity1 != null) target = entity1;
+                break;
+            case FIREBALL:
+                final ProjectileSource shooter = ((Fireball) entity).getShooter();
+                if (shooter instanceof Entity) entity = (Entity) shooter;
+        }
+        if (target == null) target = entity instanceof Mob ? ((Mob) entity).getTarget() : null;
+        final String type = Utils.getEntityPerformer(entity);
+        final Location loc = e.getLocation();
+        boolean isNear = false;
+        if (target == null) {
+            Collection<Player> c = loc.getNearbyPlayers(8);
+            if (!c.isEmpty()) {
+                target = (Player) c.toArray()[0];
+                isNear = true;
+            }
+        }
+        frontApi.recordExplosion(type, target == null ? "" : Utils.getEntityPerformer(target), isNear,
+            loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), "@" + e.getEntityType().getKey().toString());
+        api.recordBlocksBreak(e.blockList(), type);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
