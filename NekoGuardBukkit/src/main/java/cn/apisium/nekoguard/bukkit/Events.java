@@ -63,6 +63,7 @@ public final class Events implements Listener {
     public void onEntityExplode(final EntityExplodeEvent e) {
         Entity entity = e.getEntity();
         Entity target = null;
+        int radius = 8;
         switch (e.getEntityType()) {
             case PRIMED_TNT:
                 final Entity entity1 = ((TNTPrimed) entity).getSource();
@@ -71,13 +72,16 @@ public final class Events implements Listener {
             case FIREBALL:
                 final ProjectileSource shooter = ((Fireball) entity).getShooter();
                 if (shooter instanceof Entity) entity = (Entity) shooter;
+                break;
+            case CREEPER:
+                radius = ((Creeper) entity).getExplosionRadius() + 1;
         }
         if (target == null) target = entity instanceof Mob ? ((Mob) entity).getTarget() : null;
         final String type = Utils.getEntityPerformer(entity);
         final Location loc = e.getLocation();
         boolean isNear = false;
         if (target == null) {
-            Collection<Player> c = loc.getNearbyPlayers(8);
+            Collection<Player> c = loc.getNearbyPlayers(radius);
             if (!c.isEmpty()) {
                 target = (Player) c.toArray()[0];
                 isNear = true;
