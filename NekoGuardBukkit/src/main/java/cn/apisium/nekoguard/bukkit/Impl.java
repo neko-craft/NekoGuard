@@ -67,7 +67,7 @@ public class Impl implements PlatformImpl {
         final Entity e = Bukkit.getEntity(UUID.fromString(entity));
         if (e == null) return Constants.UNKNOWN;
         if (e instanceof OfflinePlayer) return Utils.getPlayerPerformerNameComponent(entity, pad);
-        final TextComponent t = new TextComponent("实体:");
+        final TextComponent t = new TextComponent("瀹炰綋:");
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t2 = new TranslatableComponent(Utils.getEntityName(e.getType().getKey().toString()));
         t2.setColor(ChatColor.WHITE);
@@ -81,7 +81,7 @@ public class Impl implements PlatformImpl {
     public @NotNull TextComponent getBlockPerformerComponent(@NotNull String world, int x, int y, int z) {
         final World w = Bukkit.getWorld(world);
         if (w == null) return Utils.getUnknownBlockPerformerComponent(world, x, y, z);
-        final TextComponent t = new TextComponent("方块:");
+        final TextComponent t = new TextComponent("鏂瑰潡:");
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t2 = new TranslatableComponent(cn.apisium.nekoguard.bukkit.utils.Utils.getBlockName(w.getBlockAt(x, y, z).getType()));
         t2.setColor(ChatColor.WHITE);
@@ -97,7 +97,7 @@ public class Impl implements PlatformImpl {
 
     @Override
     public @NotNull String getPlayerName(@NotNull String player) {
-        return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "未知玩家");
+        return (String) ObjectUtils.defaultIfNull(Bukkit.getOfflinePlayer(UUID.fromString(player)).getName(), "鏈煡鐜╁");
     }
 
     @Override

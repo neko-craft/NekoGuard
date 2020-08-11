@@ -39,8 +39,8 @@ public final class Main {
         messages = new Messages(this);
         commander
             .setDefaultDescription("The main command of NekoGuard.")
-            .setDefaultPermissionMessage("¡ìcÄãÃ»ÓÐ×ã¹»µÄÈ¨ÏÞÀ´Ö´ÐÐµ±Ç°Ö¸Áî!")
-            .setDefaultUsage("¡ìcÖ¸ÁîÓÃ·¨´íÎó!")
+            .setDefaultPermissionMessage("Â§cä½ æ²¡æœ‰è¶³å¤Ÿçš„æƒé™æ¥æ‰§è¡Œå½“å‰æŒ‡ä»¤!")
+            .setDefaultUsage("Â§cæŒ‡ä»¤ç”¨æ³•é”™è¯¯!")
             .registerCommand(new cn.apisium.nekoguard.Commands(this));
         if (commandSpeedLimit > 0) {
             final WeakHashMap<ProxiedCommandSender, Long> map = new WeakHashMap<>();

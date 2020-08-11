@@ -44,7 +44,7 @@ public final class Commands implements BaseCommand {
     public void inspect(@NotNull final ProxiedCommandSender player) {
         if (main.inspecting.containsKey(player)) {
             main.inspecting.remove(player);
-            player.sendMessage("¡ìe[NekoGuard] ¡ìbµ±Ç°ÒÑ¾­ÍË³öÁËÉó²éÄ£Ê½!");
+            player.sendMessage("Â§e[NekoGuard] Â§bå½“å‰å·²ç»é€€å‡ºäº†å®¡æŸ¥æ¨¡å¼!");
         } else {
             main.inspecting.put(player, null);
             player.sendMessage(Constants.IN_INSPECTING);
@@ -87,7 +87,7 @@ public final class Commands implements BaseCommand {
             final Iterator<ChangeList> iterator = list.iterator();
             int i = 0;
             while (iterator.hasNext()) {
-                final TextComponent redo = new TextComponent("[³·Ïú]");
+                final TextComponent redo = new TextComponent("[æ’¤é”€]");
                 redo.setColor(ChatColor.RED);
                 redo.setHoverEvent(Constants.REDO_HOVER);
                 redo.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/nekoguard undo " + i));
@@ -436,7 +436,7 @@ public final class Commands implements BaseCommand {
         String world = (String) cmd.valueOf("world");
         if (world == null) {
             if (sender.world == null) {
-                sender.sendMessage("ÇëÌá¹©²éÑ¯Î»ÖÃ!");
+                sender.sendMessage("è¯·æä¾›æŸ¥è¯¢ä½ç½®!");
                 throw Constants.IGNORED_ERROR;
             }
             world = sender.world;
@@ -455,7 +455,7 @@ public final class Commands implements BaseCommand {
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
             if (t == null) {
-                sender.sendMessage("ÇëÌá¹©Ê±¼ä!");
+                sender.sendMessage("è¯·æä¾›æ—¶é—´!");
                 throw Constants.IGNORED_ERROR;
             }
             query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
@@ -470,7 +470,7 @@ public final class Commands implements BaseCommand {
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
             if (t == null) {
-                sender.sendMessage("ÇëÌá¹©Ê±¼ä!");
+                sender.sendMessage("è¯·æä¾›æ—¶é—´!");
                 throw Constants.IGNORED_ERROR;
             }
             query.and(new SimpleTimeClause((String) t, isRollback ? '>' : null));
@@ -511,7 +511,7 @@ public final class Commands implements BaseCommand {
                     .and(gte("ty", y - r)).and(lte("ty", y + r))
                     .and(gte("tz", z - r)).and(lte("tz", z + r)).close();
                 else {
-                    sender.sendMessage("ÇëÖÁÉÙÌá¹©Ò»¸ö²éÑ¯Ìõ¼ş!");
+                    sender.sendMessage("è¯·è‡³å°‘æä¾›ä¸€ä¸ªæŸ¥è¯¢æ¡ä»¶!");
                     throw Constants.IGNORED_ERROR;
                 }
             } else {
@@ -543,7 +543,7 @@ public final class Commands implements BaseCommand {
 
     @NotNull
     private Consumer<ChangeList> sendFinishMessage(@NotNull final ProxiedCommandSender sender) {
-        return it -> sender.sendMessage("¡ìe[NekoGuard] ¡ìb²Ù×÷Íê³É! ¡ì7(" + it.getName() + ") ¡ìe×Ü¼Æ²Ù×÷:" +
-            it.getAllCount() + " ¡ìa³É¹¦:" + it.getSuccessCount() + " ¡ìcÊ§°Ü:" + it.getFailed());
+        return it -> sender.sendMessage("Â§e[NekoGuard] Â§bæ“ä½œå®Œæˆ! Â§7(" + it.getName() + ") Â§eæ€»è®¡æ“ä½œ:" +
+            it.getAllCount() + " Â§aæˆåŠŸ:" + it.getSuccessCount() + " Â§cå¤±è´¥:" + it.getFailed());
     }
 }

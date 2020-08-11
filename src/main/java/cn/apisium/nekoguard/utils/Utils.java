@@ -52,7 +52,7 @@ public final class Utils {
     public static BaseComponent getDeathEntityComponent(@NotNull final String type, @NotNull final String data) {
         BaseComponent t;
         if (type.startsWith("@")) t = new TranslatableComponent(getEntityName(type.substring(1)));
-        else if (type.isEmpty()) t = new TextComponent("Î´Öª");
+        else if (type.isEmpty()) t = new TextComponent("æœªçŸ¥");
         else return getPlayerPerformerNameComponent(type, true);
         final Matcher matcher = CUSTOM_NAME.matcher(data);
         if (matcher.find()) {
@@ -119,12 +119,12 @@ public final class Utils {
         final String s1, s2;
         if (performer == null || performer.isEmpty()) {
             s1 = "";
-            s2 = "Î´Öª";
+            s2 = "æœªçŸ¥";
         } else if (performer.startsWith("@")) {
-            s1 = "ÊµÌå:";
+            s1 = "å®ä½“:";
             s2 = getEntityName(performer.substring(1));
         } else if (performer.startsWith("#")) {
-            s1 = "·½¿é:";
+            s1 = "æ–¹å—:";
             s2 = getBlockName(performer.substring(1));
         } else return getPlayerPerformerNameComponent(performer, pad);
         final TextComponent t = new TextComponent(s1);
@@ -137,11 +137,11 @@ public final class Utils {
 
     @NotNull
     public static String formatDuration(final long time) {
-        final String str = DurationFormatUtils.formatDuration(time, "dÌìHHÊ±m·ÖsÃëÇ°", false);
+        final String str = DurationFormatUtils.formatDuration(time, "då¤©HHæ—¶måˆ†sç§’å‰", false);
         return str
-            .replace("0·Ö", "")
-            .replace("0Ìì", "")
-            .replace("0Ê±", "");
+            .replace("0åˆ†", "")
+            .replace("0å¤©", "")
+            .replace("0æ—¶", "");
     }
 
     public static long getCurrentTime() {
@@ -170,7 +170,7 @@ public final class Utils {
     }
 
     public static TextComponent getUnknownBlockPerformerComponent(@NotNull final String world, final int x, final int y, final int z) {
-        final TextComponent t = new TextComponent("·½¿é");
+        final TextComponent t = new TextComponent("æ–¹å—");
         processActionComponent(t, world, x, y, z);
         return t;
     }
@@ -210,7 +210,7 @@ public final class Utils {
         final ItemStackParser p = new ItemStackParser(data);
         final TextComponent t;
         if (p.name == null){
-            if (p.id == null) t = new TextComponent("[Î´Öª]");
+            if (p.id == null) t = new TextComponent("[æœªçŸ¥]");
             else {
                 t = new TextComponent("[");
                 t.addExtra(new TranslatableComponent(PLATFORM.getItemName(p.id)));
@@ -336,10 +336,10 @@ public final class Utils {
         if (text == null || text.isEmpty()) return EMPTY;
         if (!hasPerm) {
             final String[] ret = text.split("\\.");
-            if (ret.length == 4) text = ret[0] + "." + ret[1] + ".¡ìk***¡ì7.¡ìk***";
+            if (ret.length == 4) text = ret[0] + "." + ret[1] + ".Â§k***Â§7.Â§k***";
             else {
                 final int len = text.length() / 2;
-                text = text.substring(0, len) + "¡ìk" + StringUtils.repeat("*", len);
+                text = text.substring(0, len) + "Â§k" + StringUtils.repeat("*", len);
             }
         }
         final TextComponent t = new TextComponent(text);

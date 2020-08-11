@@ -24,3 +24,9 @@ dependencies {
         exclude group: 'org.jetbrains', module: 'annotations'
     }
 }
+
+allprojects {
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+}

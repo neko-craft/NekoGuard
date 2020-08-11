@@ -37,7 +37,7 @@ import java.util.*;
     @Permission(name = "nekoguard.rollback.block"),
     @Permission(name = "nekoguard.rollback.container"),
     @Permission(name = "nekoguard.rollback.entity"),
-    @Permission(name = "nekoguard.commandlimit")
+    @Permission(name = "nekoguard.unlimited")
 })
 public final class Main extends JavaPlugin {
     private static cn.apisium.nekoguard.Main INSTANCE;

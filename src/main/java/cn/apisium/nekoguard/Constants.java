@@ -8,21 +8,21 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 public final class Constants {
     public static boolean IS_PAPER;
-    public static final String TILE = "¡ìTILE¡ì";
-    public static final String PLAYER_NOT_EXISTS = "¡ìe[NekoGuard] ¡ìc¸ÃÍæ¼Ò»¹´ÓÎ´ÔÚ±¾·şÎñÆ÷ÓÎÍæ¹ı!";
-    public static final String HEADER = "¡ìb¡ìm                     ¡ìr ¡ìe[NekoGuard] ¡ìb¡ìm                     ",
-        FOOTER = "¡ìb¡ìm                                                           ";
+    public static final String TILE = "Â§TILEÂ§";
+    public static final String PLAYER_NOT_EXISTS = "Â§e[NekoGuard] Â§cè¯¥ç©å®¶è¿˜ä»æœªåœ¨æœ¬æœåŠ¡å™¨æ¸¸ç©è¿‡!";
+    public static final String HEADER = "Â§bÂ§m                     Â§r Â§e[NekoGuard] Â§bÂ§m                     ",
+        FOOTER = "Â§bÂ§m                                                           ";
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
-    public static final String TP_MESSAGE = "¡ìaµã»÷Á¢¼´´«ËÍµ½: ¡ìf";
-    public static final TextComponent UNKNOWN = new TextComponent("Î´Öª"), SPACE = new TextComponent("  "), EMPTY = new TextComponent(),
-        LEFT_ARROW = new TextComponent(" ¡ú "), TARGET = new TextComponent("  Ä¿±ê:"), UNCERTAIN = new TextComponent("(²»È·¶¨)");
+    public static final String TP_MESSAGE = "Â§aç‚¹å‡»ç«‹å³ä¼ é€åˆ°: Â§f";
+    public static final TextComponent UNKNOWN = new TextComponent("æœªçŸ¥"), SPACE = new TextComponent("  "), EMPTY = new TextComponent(),
+        LEFT_ARROW = new TextComponent(" â†’ "), TARGET = new TextComponent("  ç›®æ ‡:"), UNCERTAIN = new TextComponent("(ä¸ç¡®å®š)");
     @SuppressWarnings("unused")
-    public static final String SUCCESS = "¡ìe[NekoGuard] ¡ìa²Ù×÷³É¹¦!", FAILED = "¡ìe[NekoGuard] ¡ìc²Ù×÷Ê§°Ü!";
-    public static final String IN_INSPECTING = "¡ìe[NekoGuard] ¡ìbÄúµ±Ç°Õı´¦ÓÚÉó²éÄ£Ê½!";
-    public static final String NO_RECORDS = "¡ìe[NekoGuard] ¡ìcµ±Ç°Ã»ÓĞÈÎºÎ¼ÇÂ¼!";
-    public static final String COMMAND_LIMIT = "¡ìe[NekoGuard] ¡ìcÖ´ĞĞÃüÁîµÄËÙ¶ÈÌ«¿ì!";
-    public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("¡ìcµã»÷ÕâÀï½«»áÖ±½Ó³·Ïú²Ù×÷!");
-    public static final HoverEvent COPY_HOVER = Utils.genTextHoverEvent("µã»÷ÕâÀï¿ÉÒÔÖ±½Ó¸´ÖÆ!");
+    public static final String SUCCESS = "Â§e[NekoGuard] Â§aæ“ä½œæˆåŠŸ!", FAILED = "Â§e[NekoGuard] Â§cæ“ä½œå¤±è´¥!";
+    public static final String IN_INSPECTING = "Â§e[NekoGuard] Â§bæ‚¨å½“å‰æ­£å¤„äºå®¡æŸ¥æ¨¡å¼!";
+    public static final String NO_RECORDS = "Â§e[NekoGuard] Â§cå½“å‰æ²¡æœ‰ä»»ä½•è®°å½•!";
+    public static final String COMMAND_LIMIT = "Â§e[NekoGuard] Â§cæ‰§è¡Œå‘½ä»¤çš„é€Ÿåº¦å¤ªå¿«!";
+    public static final HoverEvent REDO_HOVER = Utils.genTextHoverEvent("Â§cç‚¹å‡»è¿™é‡Œå°†ä¼šç›´æ¥æ’¤é”€æ“ä½œ!");
+    public static final HoverEvent COPY_HOVER = Utils.genTextHoverEvent("ç‚¹å‡»è¿™é‡Œå¯ä»¥ç›´æ¥å¤åˆ¶!");
 
     static {
         UNKNOWN.setColor(ChatColor.GRAY);
@@ -39,9 +39,9 @@ public final class Constants {
     public static TextComponent makeFooter(int page, final int all) {
         page++;
         final int allPage = (int) Math.ceil(all / 10D);
-        final TextComponent t = new TextComponent("¡ìb¡ìm                  "),
-            pageText = new TextComponent(" µ±Ç°Ò³Êı: "),
-            pages = new TextComponent(page + "¡ì7/" + allPage),
+        final TextComponent t = new TextComponent("Â§bÂ§m                  "),
+            pageText = new TextComponent(" å½“å‰é¡µæ•°: "),
+            pages = new TextComponent(page + "Â§7/" + allPage),
             la = new TextComponent(" \u25c0"),
             lr = new TextComponent(" \u25b6 ");
 
