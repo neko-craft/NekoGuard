@@ -28,7 +28,6 @@ public final class NMSUtils {
     private final static Class<?> craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState");
     private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
     private static final Class<?> craftBlockDataClass = ReflectionUtil.getOBCClass("block.data.CraftBlockData");
-    private final static Method getTileEntity = ReflectionUtil.getMethod(craftBlockEntityStateClass, "getTileEntity");
     private final static Method tileEntityUpdate = ReflectionUtil.getMethod(tileEntityClass, "update");
     private final static Method tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass);
     private final static Method tileEntityLoad = ReflectionUtil.getMethod(tileEntityClass, "load", nmsIBlockDataClass, nbtTagCompoundClass);
@@ -39,9 +38,10 @@ public final class NMSUtils {
     private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
     private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
     private static final Method craftBlockDataGetState = ReflectionUtil.getMethod(craftBlockDataClass, "getState");
-    private static final Method itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, "fromCompound", nbtTagCompoundClass);
+    private static final Method itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, Constants.IS_PAPER ? "fromCompound" : "a", nbtTagCompoundClass);
     private static final Method itemStackAsCraftMirror = ReflectionUtil.getMethod(craftItemStackClass, "asCraftMirror", nmsItemStackClass);
     private static final Field craftItemStackHandleField = ReflectionUtil.getField(craftItemStackClass, "handle", true);
+    private final static Field craftBlockEntityStateTileEntityField = ReflectionUtil.getField(craftBlockEntityStateClass, "tileEntity", true);
 
     @Nullable
     public static String serializeTileEntity(@NotNull final BlockState s) {
@@ -53,7 +53,7 @@ public final class NMSUtils {
     public static Object getTileEntity(@NotNull final BlockState s) {
         if (!craftBlockEntityStateClass.isInstance(s)) return null;
         try {
-            return tileEntitySave.invoke(getTileEntity.invoke(s), nbtTagCompoundClass.newInstance());
+            return tileEntitySave.invoke(craftBlockEntityStateTileEntityField.get(s), nbtTagCompoundClass.newInstance());
         } catch (final Exception e) {
             Utils.throwSneaky(e);
             throw new RuntimeException();
@@ -99,7 +99,6 @@ public final class NMSUtils {
         }
     }
 
-    @SuppressWarnings("ConstantConditions")
     @NotNull
     private static Object getNMSItemStack(@NotNull final ItemStack itemStack) {
         try {
@@ -118,7 +117,7 @@ public final class NMSUtils {
         final BlockState state = block.getState();
         if (!craftBlockEntityStateClass.isInstance(state)) return;
         try {
-            final Object tile = getTileEntity.invoke(state);
+            final Object tile = craftBlockEntityStateTileEntityField.get(state);
             tileEntityLoad.invoke(tile, craftBlockDataGetState.invoke(block.getBlockData()),
                 nbtParserParse.invoke(null, data));
             tileEntityUpdate.invoke(tile);
@@ -132,7 +131,7 @@ public final class NMSUtils {
         final BlockState state = block.getState();
         if (!craftBlockEntityStateClass.isInstance(state)) return;
         try {
-            final Object tile = getTileEntity.invoke(state);
+            final Object tile = craftBlockEntityStateTileEntityField.get(state);
             tileEntityLoad.invoke(tile, craftBlockDataGetState.invoke(block.getBlockData()), data);
             tileEntityUpdate.invoke(tile);
         } catch (Exception e) {

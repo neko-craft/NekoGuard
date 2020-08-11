@@ -112,7 +112,7 @@ public final class API {
         db.write(Point.measurement(deathRecords)
             .tag("performer", performer)
             .tag("cause", cause)
-            .tag("type", '@' + type)
+            .tag("type", type)
             .tag("world", world)
             .addField("entity", ZERO_HEALTH.matcher(data).replaceAll(""))
             .addField("x", x)

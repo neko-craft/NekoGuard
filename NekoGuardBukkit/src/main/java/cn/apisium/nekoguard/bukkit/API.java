@@ -40,13 +40,13 @@ public final class API {
 
     public void recordDeath(@NotNull final String performer, @NotNull final String cause, @NotNull final Entity entity) {
         final Location loc = entity.getLocation();
-        front.recordDeath(performer, cause, "@" + entity.getType().getKey(), loc.getWorld().toString(),
+        front.recordDeath(performer, cause, Utils.getEntityPerformer(entity), loc.getWorld().getName(),
             NMSUtils.serializeEntity(entity), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
     }
 
     public void recordSpawn(@NotNull final Entity entity, @NotNull final String reason) {
         final Location loc = entity.getLocation();
-        front.recordSpawn(entity.getType().getKey().toString(), reason, loc.getWorld().toString(),
+        front.recordSpawn(entity.getType().getKey().toString(), reason, loc.getWorld().getName(),
             loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), entity.getUniqueId().toString());
     }
 
@@ -68,7 +68,7 @@ public final class API {
 
     public void recordPlayerSession(@NotNull final Player player, final boolean isLogin) {
         final Location loc = player.getLocation();
-        front.recordPlayerSession(player.getUniqueId().toString(), player.getName(), isLogin, loc.getWorld().toString(),
+        front.recordPlayerSession(player.getUniqueId().toString(), player.getName(), isLogin, loc.getWorld().getName(),
             loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), player.getAddress() == null ? "" : player.getAddress().getHostString());
     }
 }

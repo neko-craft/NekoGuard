@@ -53,6 +53,7 @@ public final class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        if (!Constants.IS_PAPER) getLogger().warning("We strongly recommend that you use PaperSpigot for better effects. Please visit here: https://papermc.io");
         final String url = getConfig().getString("url");
         if (url == null || url.equals("")) {
             getLogger().warning("No InfluexDB url provided.");

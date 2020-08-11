@@ -16,7 +16,6 @@ public final class Constants {
     public static final String TP_MESSAGE = "§a点击立即传送到: §f";
     public static final TextComponent UNKNOWN = new TextComponent("未知"), SPACE = new TextComponent("  "), EMPTY = new TextComponent(),
         LEFT_ARROW = new TextComponent(" → "), TARGET = new TextComponent("  目标:"), UNCERTAIN = new TextComponent("(不确定)");
-    @SuppressWarnings("unused")
     public static final String SUCCESS = "§e[NekoGuard] §a操作成功!", FAILED = "§e[NekoGuard] §c操作失败!";
     public static final String IN_INSPECTING = "§e[NekoGuard] §b您当前正处于审查模式!";
     public static final String NO_RECORDS = "§e[NekoGuard] §c当前没有任何记录!";

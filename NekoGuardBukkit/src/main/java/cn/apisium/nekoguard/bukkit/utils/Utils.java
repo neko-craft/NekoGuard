@@ -71,7 +71,7 @@ public final class Utils {
         return entity == null
             ? "" : entity instanceof OfflinePlayer
             ? entity.getUniqueId().toString()
-            : "@" + entity.getType().getKey().toString();
+            : '@' + entity.getType().getKey().toString();
     }
 
     @SuppressWarnings("ConstantConditions")

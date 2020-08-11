@@ -293,11 +293,14 @@ public final class Commands implements BaseCommand {
             if (args.length != 1) return false;
             try {
                 Instant.parse(args[0]);
-                api.fetchItem(api.itemsRecords, args[0], it -> Utils.PLATFORM.fetchItemIntoInventory(sender, it));
-                return true;
+                api.fetchItem(api.itemsRecords, args[0], it -> {
+                    Utils.PLATFORM.fetchItemIntoInventory(sender, it);
+                    sender.sendMessage(Constants.SUCCESS);
+                });
             } catch (final Exception ignored) {
-                return false;
+                sender.sendMessage(Constants.FAILED);
             }
+            return true;
         }
 
         @Command("container")
@@ -307,11 +310,14 @@ public final class Commands implements BaseCommand {
             if (args.length != 1) return false;
             try {
                 Instant.parse(args[0]);
-                api.fetchItem(api.containerRecords, args[0], it -> Utils.PLATFORM.fetchItemIntoInventory(sender, it));
-                return true;
+                api.fetchItem(api.containerRecords, args[0], it -> {
+                    Utils.PLATFORM.fetchItemIntoInventory(sender, it);
+                    sender.sendMessage(Constants.SUCCESS);
+                });
             } catch (final Exception ignored) {
-                return false;
+                sender.sendMessage(Constants.FAILED);
             }
+            return true;
         }
     }
 

@@ -177,9 +177,8 @@ public final class ReflectionUtil {
             if (declared) field.setAccessible(true);
             return field;
         } catch (Exception e) {
-            e.printStackTrace();
-            fields.put(fieldName, null);
-            return null;
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
         }
     }
 }
