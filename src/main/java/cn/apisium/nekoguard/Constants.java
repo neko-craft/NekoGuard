@@ -10,8 +10,8 @@ public final class Constants {
     public static boolean IS_PAPER;
     public static final String TILE = "§TILE§";
     public static final String PLAYER_NOT_EXISTS = "§e[NekoGuard] §c该玩家还从未在本服务器游玩过!";
-    public static final String HEADER = "§b§m                     §r §e[NekoGuard] §b§m                     ",
-        FOOTER = "§b§m                                                           ";
+    public static final TextComponent[] HEADER = new TextComponent[3];
+    public static final String FOOTER = "§b§m                                                           ";
     public static final RuntimeException IGNORED_ERROR = new RuntimeException("IGNORED");
     public static final String TP_MESSAGE = "§a点击立即传送到: §f";
     public static final TextComponent UNKNOWN = new TextComponent("未知"), SPACE = new TextComponent("  "), EMPTY = new TextComponent(),
@@ -29,6 +29,12 @@ public final class Constants {
         TARGET.setColor(ChatColor.GRAY);
         UNCERTAIN.setColor(ChatColor.RED);
         UNCERTAIN.setItalic(true);
+        TextComponent t = HEADER[0] = HEADER[2] = new TextComponent("                     ");
+        t.setColor(ChatColor.AQUA);
+        t.setStrikethrough(true);
+        t = HEADER[1] = new TextComponent(" [NekoGuard] ");
+        t.setColor(ChatColor.YELLOW);
+        t.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://g.neko-craft.com"));
         try {
             Class.forName("com.destroystokyo.paper.entity.Pathfinder");
             IS_PAPER = true;

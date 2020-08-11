@@ -1,6 +1,10 @@
 # NekoGuard [![](https://www.jitpack.io/v/neko-craft/NekoGuard.svg)](https://www.jitpack.io/#neko-craft/NekoGuard)
 
-See also: [NekoGuardFabric](https://github.com/neko-craft/NekoGuardFabric)
+## See also
+
+[NekoGuardFabric](https://github.com/neko-craft/NekoGuardFabric)
+
+[NekoCraft 公益原版生存服务器](https://neko-craft.com)
 
 ## Download
 
