@@ -19,7 +19,7 @@ dependencies {
     compileOnly 'net.md-5:bungeecord-chat:1.16-R0.4-SNAPSHOT'
     compileOnly 'net.sf.jopt-simple:jopt-simple:6.0-alpha-3'
     compileOnly 'commons-lang:commons-lang:2.6'
-    compile 'com.github.neko-craft:NekoCommander:2475e6014d'
+    compile 'com.github.neko-craft:NekoCommander:f128bfc0f8'
     compile ('org.influxdb:influxdb-java:2.19') {
         exclude group: 'org.jetbrains', module: 'annotations'
     }

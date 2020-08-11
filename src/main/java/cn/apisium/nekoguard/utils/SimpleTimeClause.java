@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 public final class SimpleTimeClause implements Clause {
     // https://v2.docs.influxdata.com/v2.0/reference/flux/language/lexical-elements/#duration-literals
-    private final static Pattern PATTERN = Pattern.compile("^(\\d(y|mo|w|d|h|m|s|ms|us|ns)? *[-+*/]? *)+$");
+    public final static Pattern PATTERN = Pattern.compile("^(\\d(y|mo|w|d|h|m|s|ms|us|ns)? *[-+*/]? *)+$");
     private final String time;
     private final char symbol;
     public SimpleTimeClause(@NotNull final String time) { this(time, '<'); }

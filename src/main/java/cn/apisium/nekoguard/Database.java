@@ -1,11 +1,13 @@
 package cn.apisium.nekoguard;
 
+import cn.apisium.nekoguard.utils.SimpleTimeClause;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
@@ -30,6 +32,10 @@ public final class Database {
         return instance.query(new Query(command, database));
     }
 
+    public void query(@NotNull final String command, @NotNull final Consumer<QueryResult> onSuccess) {
+        instance.query(new Query(command, database), onSuccess, Database::onFail);
+    }
+
     @SuppressWarnings("unused")
     @NotNull
     public QueryResult query(@NotNull final Query query) {
@@ -38,6 +44,17 @@ public final class Database {
 
     public void query(@NotNull final Query query, @NotNull final Consumer<QueryResult> onSuccess) {
         instance.query(query, onSuccess, Database::onFail);
+    }
+
+    public void dropSeries(@NotNull final String table, @NotNull final Consumer<Boolean> onSuccess) {
+        query("DROP SERIES FROM \"" + table + "\"", it -> onSuccess.accept(!it.hasError() && it.getResults().isEmpty()));
+    }
+
+    public void deleteSeries(@NotNull final String table, @Nullable final String time, @NotNull final Consumer<Boolean> onSuccess) {
+        if (time == null) dropSeries(table, onSuccess);
+        else if (SimpleTimeClause.PATTERN.matcher(time).matches()) query("DELETE FROM \"" + table + "\" WHERE time < now() - " + time,
+            it -> onSuccess.accept(!it.hasError()));
+        else onSuccess.accept(Boolean.FALSE);
     }
 
     private static void onFail(@NotNull final Throwable e) {

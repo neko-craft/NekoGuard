@@ -62,6 +62,18 @@ public final class Commands implements BaseCommand {
         return true;
     }
 
+    @Command("delete")
+    @Permission("nekoguard.delete")
+    public void deleteCommands(@NotNull final ProxiedCommandSender sender,
+                               @Nullable @Argument({ "t", "time" }) final String time,
+                               @Nullable @Argument(value = { "n", "name", "table" }, completeValues = { "blocks", "containers", "chats", "commands",
+                                   "deaths", "spawns", "items", "sessions", "explosions" }, required = true) final String table
+    ) {
+        final String key = api.tableMap.get(table);
+        if (key == null) sender.sendMessage(Constants.FAILED);
+        else main.getDatabase().deleteSeries(key, time, it -> sender.sendMessage(it ? Constants.SUCCESS : Constants.FAILED));
+    }
+
     @Command("undo")
     public boolean undo(@NotNull final ProxiedCommandSender sender, @NotNull final String[] args) {
         final LinkedList<ChangeList> list = main.commandActions.get(sender);

@@ -8,6 +8,7 @@ import org.influxdb.querybuilder.WhereQueryImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +30,7 @@ public final class API {
     private final Database db;
     private long curTime = Utils.getCurrentTime();
     protected final Timer timer;
+    protected final HashMap<String, String> tableMap = new HashMap<>();
     private final static Pattern ZERO_HEALTH = Pattern.compile(",Health:0\\.0f|Health:0\\.0f,|Health:0\\.0f");
 
     API(final String prefix, final Main plugin) {
@@ -42,6 +44,16 @@ public final class API {
         itemsRecords = prefix + "Items";
         sessionsRecords = prefix + "Sessions";
         explosionsRecords = prefix + "Explosions";
+
+        tableMap.put("blocks", blockRecords);
+        tableMap.put("containers", containerRecords);
+        tableMap.put("chats", chatRecords);
+        tableMap.put("commands", commandRecords);
+        tableMap.put("deaths", deathRecords);
+        tableMap.put("spawns", spawnRecords);
+        tableMap.put("items", itemsRecords);
+        tableMap.put("sessions", sessionsRecords);
+        tableMap.put("explosions", explosionsRecords);
 
         timer = new Timer("NekoGuard-Timer");
         timer.schedule(new TimerTask() {
