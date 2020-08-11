@@ -57,6 +57,7 @@ public final class API {
         recordBlockAction(block.getState(), performer.getUniqueId().toString(), isBreak);
     }
     public void recordBlockAction(@NotNull final BlockState block, @NotNull final String performer, final boolean isBreak) {
+        if (block.getType().isAir()) return;
         front.recordBlockAction(performer, isBreak, block.getWorld().getName(), block.getX(), block.getY(), block.getZ(),
             isBreak ? NMSUtils.getFullBlockData(block) : block.getType().getKey().toString());
     }
