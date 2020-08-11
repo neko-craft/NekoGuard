@@ -18,17 +18,17 @@ import java.util.*;
 
 public final class API {
     private final cn.apisium.nekoguard.API front;
-    private ArrayList<Object[]> itemsList = new ArrayList<>();
+    private volatile ArrayList<Object[]> itemsList = new ArrayList<>();
     API(final cn.apisium.nekoguard.API front) {
         this.front = front;
         Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> {
             if (itemsList.isEmpty()) return;
             final ArrayList<Object[]> list = itemsList;
             itemsList = new ArrayList<>();
-            list.forEach(it -> front.recordContainerAction(
+            for (final Object[] it : list) front.recordContainerAction(
                 NMSUtils.serializeItemStack((ItemStack) it[0]),
                 (ContainerRecord) it[1], (ContainerRecord) it[2], (long) it[3]
-            ));
+            );
         }, 1, 1);
     }
 
