@@ -9,9 +9,14 @@ import cn.apisium.nekoguard.bukkit.utils.Utils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.type.Dispenser;
+import org.bukkit.block.data.type.Hopper;
 import org.bukkit.block.data.type.RedstoneWire;
 import org.bukkit.command.*;
 import org.bukkit.entity.*;
+import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -222,10 +227,14 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryMoveItem(final InventoryMoveItemEvent e) {
-        if (e.getDestination() == e.getSource() ||
-            !Utils.isNeedToRecordContainerAction(e.getSource().getType()) ||
-            !Utils.isNeedToRecordContainerAction(e.getDestination().getType())) return;
-        api.recordContainerAction(e.getItem().clone(), e.getSource(), e.getDestination());
+        if (e.getItem().getType().isEmpty()) return;
+        final Inventory s = e.getSource(), d = e.getDestination();
+        if (!Utils.isNeedToRecordContainerAction(s.getType()) || !Utils.isNeedToRecordContainerAction(d.getType())) return;
+        final InventoryHolder sh = s.getHolder(), dh = d.getHolder();
+        if (!NMSUtils.canItemBeAdded(d, e.getItem(),
+            sh instanceof BlockInventoryHolder && dh instanceof BlockInventoryHolder
+                ? ((BlockInventoryHolder) dh).getBlock().getFace(((BlockInventoryHolder) sh).getBlock()) : null)) return;
+        api.recordContainerAction(e.getItem().clone(), s, d);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

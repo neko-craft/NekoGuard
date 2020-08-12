@@ -18,13 +18,16 @@ import java.util.*;
 
 public final class API {
     private final cn.apisium.nekoguard.API front;
-    private volatile ArrayList<Object[]> itemsList = new ArrayList<>();
+    private ArrayList<Object[]> itemsList = new ArrayList<>();
     API(final cn.apisium.nekoguard.API front) {
         this.front = front;
         Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> {
-            if (itemsList.isEmpty()) return;
-            final ArrayList<Object[]> list = itemsList;
-            itemsList = new ArrayList<>();
+            final ArrayList<Object[]> list;
+            synchronized (this) {
+                if (itemsList.isEmpty()) return;
+                list = itemsList;
+                itemsList = new ArrayList<>();
+            }
             for (final Object[] it : list) front.recordContainerAction(
                 NMSUtils.serializeItemStack((ItemStack) it[0]),
                 (ContainerRecord) it[1], (ContainerRecord) it[2], (long) it[3]
@@ -34,8 +37,10 @@ public final class API {
 
     public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target) {
         if (source == null && target == null) return;
-        itemsList.add(new Object[] { is.clone(), Utils.getContainerRecord(source),
-            Utils.getContainerRecord(target), front.getCurrentTime() });
+        synchronized (this) {
+            itemsList.add(new Object[]{is.clone(), Utils.getContainerRecord(source),
+                Utils.getContainerRecord(target), front.getCurrentTime()});
+        }
     }
 
     public void recordDeath(@NotNull final String performer, @NotNull final String cause, @NotNull final Entity entity) {

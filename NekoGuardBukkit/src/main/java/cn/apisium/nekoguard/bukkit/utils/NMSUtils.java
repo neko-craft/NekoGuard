@@ -3,11 +3,13 @@ package cn.apisium.nekoguard.bukkit.utils;
 import cn.apisium.nekoguard.Constants;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.TileState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.type.Piston;
 import org.bukkit.entity.Entity;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,30 +20,39 @@ import java.lang.reflect.Method;
 
 public final class NMSUtils {
     private NMSUtils() {}
-    private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound");
-    private final static Class<?> tileEntityClass = ReflectionUtil.getNMSClass("TileEntity");
-    private final static Class<?> nmsEntityClass = ReflectionUtil.getNMSClass("Entity");
-    private static final Class<?> nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser");
-    private static final Class<?> nmsItemStackClass = ReflectionUtil.getNMSClass("ItemStack");
-    private static final Class<?> nmsIBlockDataClass = ReflectionUtil.getNMSClass("IBlockData");
-    private static final Class<?> craftCraftEntityClass = ReflectionUtil.getOBCClass("entity.CraftEntity");
-    private final static Class<?> craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState");
-    private static final Class<?> craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack");
-    private static final Class<?> craftBlockDataClass = ReflectionUtil.getOBCClass("block.data.CraftBlockData");
-    private final static Method tileEntityUpdate = ReflectionUtil.getMethod(tileEntityClass, "update");
-    private final static Method tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass);
-    private final static Method tileEntityLoad = ReflectionUtil.getMethod(tileEntityClass, "load", nmsIBlockDataClass, nbtTagCompoundClass);
-    private static final Method saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass);
-    private final static Method craftEntityGetHandle = ReflectionUtil.getMethod(craftCraftEntityClass, "getHandle");
-    private final static Method entitySave = ReflectionUtil.getMethod(nmsEntityClass, "save", nbtTagCompoundClass);
-    private final static Method entityLoad = ReflectionUtil.getMethod(nmsEntityClass, "load", nbtTagCompoundClass);
-    private static final Method asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class);
-    private static final Method nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class);
-    private static final Method craftBlockDataGetState = ReflectionUtil.getMethod(craftBlockDataClass, "getState");
-    private static final Method itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, Constants.IS_PAPER ? "fromCompound" : "a", nbtTagCompoundClass);
-    private static final Method itemStackAsCraftMirror = ReflectionUtil.getMethod(craftItemStackClass, "asCraftMirror", nmsItemStackClass);
-    private static final Field craftItemStackHandleField = ReflectionUtil.getField(craftItemStackClass, "handle", true);
-    private final static Field craftBlockEntityStateTileEntityField = ReflectionUtil.getField(craftBlockEntityStateClass, "tileEntity", true);
+    private final static Class<?> nbtTagCompoundClass = ReflectionUtil.getNMSClass("NBTTagCompound"),
+        tileEntityClass = ReflectionUtil.getNMSClass("TileEntity"),
+        nmsEntityClass = ReflectionUtil.getNMSClass("Entity"),
+        nbtParserClass = ReflectionUtil.getNMSClass("MojangsonParser"),
+        nmsItemStackClass = ReflectionUtil.getNMSClass("ItemStack"),
+        nmsIBlockDataClass = ReflectionUtil.getNMSClass("IBlockData"),
+        nmsTileEntityHopperClass = ReflectionUtil.getNMSClass("TileEntityHopper"),
+        nmsIInventoryClass = ReflectionUtil.getNMSClass("IInventory"),
+        nmsIWorldInventoryClass = ReflectionUtil.getNMSClass("IWorldInventory"),
+        nmsEnumDirectionClass = ReflectionUtil.getNMSClass("EnumDirection"),
+        craftCraftEntityClass = ReflectionUtil.getOBCClass("entity.CraftEntity"),
+        craftBlockEntityStateClass = ReflectionUtil.getOBCClass("block.CraftBlockEntityState"),
+        craftItemStackClass = ReflectionUtil.getOBCClass("inventory.CraftItemStack"),
+        craftBlockDataClass = ReflectionUtil.getOBCClass("block.data.CraftBlockData"),
+        craftInventoryClass = ReflectionUtil.getOBCClass("inventory.CraftInventory");
+    private final static Method tileEntityUpdate = ReflectionUtil.getMethod(tileEntityClass, "update"),
+        tileEntitySave = ReflectionUtil.getMethod(tileEntityClass, "save", nbtTagCompoundClass),
+        tileEntityLoad = ReflectionUtil.getMethod(tileEntityClass, "load", nmsIBlockDataClass, nbtTagCompoundClass),
+        saveNmsItemStack = ReflectionUtil.getMethod(nmsItemStackClass, "save", nbtTagCompoundClass),
+        craftEntityGetHandle = ReflectionUtil.getMethod(craftCraftEntityClass, "getHandle"),
+        entitySave = ReflectionUtil.getMethod(nmsEntityClass, "save", nbtTagCompoundClass),
+        entityLoad = ReflectionUtil.getMethod(nmsEntityClass, "load", nbtTagCompoundClass),
+        asNMSCopyMethod = ReflectionUtil.getMethod(craftItemStackClass, "asNMSCopy", ItemStack.class),
+        nbtParserParse = ReflectionUtil.getMethod(nbtParserClass, "parse", String.class),
+        craftBlockDataGetState = ReflectionUtil.getMethod(craftBlockDataClass, "getState"),
+        itemStackFromCompound = ReflectionUtil.getMethod(nmsItemStackClass, Constants.IS_PAPER ? "fromCompound" : "a", nbtTagCompoundClass),
+        itemStackAsCraftMirror = ReflectionUtil.getMethod(craftItemStackClass, "asCraftMirror", nmsItemStackClass),
+        getInventory = ReflectionUtil.getMethod(craftInventoryClass, "getInventory"),
+        getSlotsForFace = ReflectionUtil.getMethod(nmsIWorldInventoryClass, "getSlotsForFace", nmsEnumDirectionClass),
+        canPlaceItem = ReflectionUtil.getMethod(nmsTileEntityHopperClass, "a", true, nmsIInventoryClass, nmsItemStackClass, int.class, nmsEnumDirectionClass);
+    private static final Field craftItemStackHandleField = ReflectionUtil.getField(craftItemStackClass, "handle", true),
+        craftBlockEntityStateTileEntityField = ReflectionUtil.getField(craftBlockEntityStateClass, "tileEntity", true);
+    private static final Object[] enumDirections = nmsEnumDirectionClass.getEnumConstants();
 
     @Nullable
     public static String serializeTileEntity(@NotNull final BlockState s) {
@@ -164,5 +175,47 @@ public final class NMSUtils {
         final String[] arr = data.split(Constants.TILE, 2);
         block.setBlockData(Bukkit.createBlockData(arr[0]), false);
         if (arr.length == 2) NMSUtils.loadTileStateData(block, arr[1]);
+    }
+
+    public static boolean canItemBeAdded(@NotNull final Inventory inventory, @NotNull final ItemStack itemStack, @Nullable final BlockFace face) {
+        try {
+            final Object inv = getInventory.invoke(inventory), direction = getEnumDirection(face), item = getNMSItemStack(itemStack);
+            if (nmsIWorldInventoryClass.isInstance(inv)) {
+                for (final int i : ((int[]) getSlotsForFace.invoke(inv, direction)))
+                    if (canItemBeAddedToSlot(inventory, itemStack, i, direction, inv, item)) return true;
+            } else {
+                final int len = inventory.getSize();
+                for (int i = 0; i < len; i++) if (canItemBeAddedToSlot(inventory, itemStack, i, direction, inv, item)) return true;
+            }
+            return false;
+        } catch (final Exception e) {
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
+        }
+    }
+
+    public static boolean canItemBeAddedToSlot(@NotNull final Inventory inventory, @NotNull final ItemStack itemStack, final int i, @Nullable final Object direction, @Nullable final Object inv, @Nullable final Object item) {
+        try {
+            if (!(boolean) canPlaceItem.invoke(null, inv, item, i, direction)) return false;
+            final ItemStack is = inventory.getItem(i);
+            return is == null || is.getType().isEmpty() || (itemStack.isSimilar(is) && is.getAmount() < is.getMaxStackSize());
+        } catch (final Exception e) {
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
+        }
+    }
+
+    @Nullable
+    public static Object getEnumDirection(@Nullable final BlockFace face) {
+        if (face == null) return null;
+        switch (face) {
+            case DOWN: return enumDirections[0];
+            case UP: return enumDirections[1];
+            case NORTH: return enumDirections[2];
+            case SOUTH: return enumDirections[3];
+            case WEST: return enumDirections[4];
+            case EAST: return enumDirections[5];
+            default: return null;
+        }
     }
 }

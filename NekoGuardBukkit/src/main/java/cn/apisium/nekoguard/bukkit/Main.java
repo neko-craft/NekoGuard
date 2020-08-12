@@ -3,6 +3,7 @@ package cn.apisium.nekoguard.bukkit;
 import cn.apisium.nekocommander.impl.BukkitCommander;
 import cn.apisium.nekoguard.Constants;
 import cn.apisium.nekoguard.bukkit.utils.MetricsLite;
+import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.utils.Utils;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -55,6 +56,8 @@ public final class Main extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         if (!Constants.IS_PAPER) getLogger().warning("We strongly recommend that you use PaperSpigot for better effects. Please visit here: https://papermc.io");
+        if (getServer().spigot().getSpigotConfig().getInt("world-settings.default.hopper-amount", 1) > 1)
+            getLogger().warning("the hopper-amount is greater than 1, container records may be inaccurate!");
         final String url = getConfig().getString("url");
         if (url == null || url.equals("")) {
             getLogger().warning("No InfluexDB url provided.");
