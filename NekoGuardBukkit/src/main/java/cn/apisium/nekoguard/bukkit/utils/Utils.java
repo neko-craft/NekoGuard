@@ -101,4 +101,14 @@ public final class Utils {
             return new ContainerRecord(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
         } else return null;
     }
+
+    public static boolean hasDifferentSlot(@NotNull final InventoryType inv) {
+        switch (inv) {
+            case FURNACE:
+            case SMOKER:
+            case BLAST_FURNACE:
+                return true;
+            default: return false;
+        }
+    }
 }

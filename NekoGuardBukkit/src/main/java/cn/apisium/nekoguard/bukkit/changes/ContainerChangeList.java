@@ -6,6 +6,7 @@ import cn.apisium.nekoguard.mappers.SeriesMapper;
 import cn.apisium.nekoguard.bukkit.utils.*;
 import cn.apisium.nekoguard.utils.Pair;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +41,9 @@ public final class ContainerChangeList extends cn.apisium.nekoguard.ChangeList {
                     continue;
                 }
                 if (source != null) {
-                    source.addItem(is);
+                    if (arr[7] != null && !(target instanceof OfflinePlayer) && Utils.hasDifferentSlot(source.getType()))
+                        NMSUtils.addItemToBottom(source, is);
+                    else source.addItem(is);
                     added.add(new Pair<>(source, is));
                 }
                 if (target != null) remove(target, is, true);

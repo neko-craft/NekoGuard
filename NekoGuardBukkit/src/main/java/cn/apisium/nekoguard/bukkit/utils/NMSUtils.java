@@ -205,6 +205,31 @@ public final class NMSUtils {
         }
     }
 
+    public static void addItemToBottom(@NotNull final Inventory inventory, @NotNull final ItemStack itemStack) {
+        try {
+            final int size = itemStack.getMaxStackSize();
+            int l = itemStack.getAmount();
+            for (final int i : ((int[]) getSlotsForFace.invoke(getInventory.invoke(inventory), enumDirections[0]))) {
+                final ItemStack is = inventory.getItem(i);
+                if (is == null || is.getType().isEmpty()) {
+                    inventory.setItem(i, itemStack);
+                    return;
+                }
+                if (itemStack.isSimilar(is) && is.getAmount() < is.getMaxStackSize()) {
+                    final int k = Math.min(l, size - is.getAmount());
+
+                    l -= k;
+                    is.add(k);
+                    inventory.setItem(i, is);
+                }
+                if (l < 1) return;
+            }
+        } catch (final Exception e) {
+            Utils.throwSneaky(e);
+            throw new RuntimeException();
+        }
+    }
+
     @Nullable
     public static Object getEnumDirection(@Nullable final BlockFace face) {
         if (face == null) return null;
