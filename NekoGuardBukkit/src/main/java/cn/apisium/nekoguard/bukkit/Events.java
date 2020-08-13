@@ -1,8 +1,6 @@
 package cn.apisium.nekoguard.bukkit;
 
-import cn.apisium.nekocommander.ProxiedCommandSender;
 import cn.apisium.nekoguard.Constants;
-import cn.apisium.nekoguard.Messages;
 import cn.apisium.nekoguard.bukkit.utils.CommandSenderType;
 import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.bukkit.utils.Utils;
@@ -12,6 +10,7 @@ import org.bukkit.block.*;
 import org.bukkit.block.data.type.RedstoneWire;
 import org.bukkit.command.*;
 import org.bukkit.entity.*;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -35,7 +34,6 @@ public final class Events implements Listener {
     private final cn.apisium.nekoguard.API frontApi;
     private final API api;
     private final cn.apisium.nekoguard.Main main;
-    private final Messages messages;
     private final cn.apisium.nekoguard.bukkit.Main plugin;
     private static final String IGNITER_KEY = "nekoguard.igniter";
 
@@ -44,7 +42,6 @@ public final class Events implements Listener {
         frontApi = main.getApi();
         api = plugin.getApi();
         this.plugin = plugin;
-        this.messages = main.getMessages();
 
         if (plugin.recordContainerActionByNonPlayer) plugin.getServer().getPluginManager()
             .registerEvent(InventoryMoveItemEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
@@ -71,7 +68,7 @@ public final class Events implements Listener {
         if (main.isInspecting(e.getPlayer())) {
             final Block b = e.getBlock();
             e.setCancelled(true);
-            messages.sendQueryBlockMessage(ProxiedCommandSender.newInstance(e.getPlayer()), b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            api.inspectBlock(e.getPlayer(), b, false);
         } else api.recordBlockAction(e.getBlock(), e.getPlayer(), false);
     }
 
@@ -184,6 +181,11 @@ public final class Events implements Listener {
     @EventHandler
     public void onPlayerInteractEntity(final PlayerInteractEntityEvent e) {
         final Entity entity = e.getRightClicked();
+        if (main.isInspecting(e.getPlayer())) {
+            e.setCancelled(true);
+            api.inspectEntity(e.getPlayer(), entity, true);
+            return;
+        }
         if (entity.getType() != EntityType.CREEPER) return;
         final Player player = e.getPlayer();
         final PlayerInventory inv = player.getInventory();
@@ -192,24 +194,22 @@ public final class Events implements Listener {
             new FixedMetadataValue(plugin, player.getUniqueId().toString()));
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerInteract(final PlayerInteractEvent e) {
         final Player p = e.getPlayer();
         final Block b = e.getClickedBlock();
         final ItemStack item = e.getItem();
         if (b == null) return;
         if (e.getAction() == Action.PHYSICAL && b.getType() == Material.FARMLAND) {
-            api.recordBlockAction(b, p, true);
+            if (e.useInteractedBlock() != Event.Result.DENY) api.recordBlockAction(b, p, true);
             return;
         }
         if ((item != null || e.getAction() != Action.RIGHT_CLICK_BLOCK) && main.isInspecting(p)) {
             e.setCancelled(true);
-            final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(p);
-            if (b.getState() instanceof Container) messages.sendContainerActionsMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
-            else messages.sendQueryBlockMessage(pcs, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), 0);
+            api.inspectBlock(p, b, e.getAction() == Action.RIGHT_CLICK_BLOCK);
             return;
         }
-        if (e.getAction() == Action.RIGHT_CLICK_BLOCK) switch (b.getType()) {
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.useInteractedBlock() != Event.Result.DENY) switch (b.getType()) {
             case LECTERN: {
                 if (item == null || item.getType() != Material.WRITTEN_BOOK) return;
                 api.recordBlockAction(b, p, true);
@@ -326,10 +326,7 @@ public final class Events implements Listener {
         final Entity entity = e.getDamager();
         if (e.getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK || !main.isInspecting(entity)) return;
         e.setCancelled(true);
-        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(e.getDamager());
-        if (e.getEntity() instanceof InventoryHolder)
-            messages.sendContainerActionsMessage(pcs, e.getEntity().getUniqueId().toString(), 0);
-        else messages.sendQuerySpawnMessage(pcs, e.getEntity().getUniqueId().toString(), 0);
+        api.inspectEntity((Player) entity, e.getEntity(), false);
     }
 
     @EventHandler
@@ -337,10 +334,7 @@ public final class Events implements Listener {
         final Entity entity = e.getAttacker();
         if (entity == null || !main.isInspecting(entity)) return;
         e.setCancelled(true);
-        final ProxiedCommandSender pcs = ProxiedCommandSender.newInstance(entity);
-        if (e.getVehicle() instanceof InventoryHolder)
-            messages.sendContainerActionsMessage(pcs, e.getVehicle().getUniqueId().toString(), 0);
-        else messages.sendQuerySpawnMessage(pcs, e.getVehicle().getUniqueId().toString(), 0);
+        api.inspectEntity((Player) entity, e.getVehicle(), false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -355,7 +349,7 @@ public final class Events implements Listener {
         final Entity remover = e instanceof HangingBreakByEntityEvent ? ((HangingBreakByEntityEvent) e).getRemover() : null;
         if (remover != null && main.isInspecting(remover)) {
             e.setCancelled(true);
-            messages.sendQuerySpawnMessage(ProxiedCommandSender.newInstance(remover), e.getEntity().getUniqueId().toString(), 0);
+            api.inspectEntity((Player) remover, e.getEntity(), false);
         } else api.recordDeath(Utils.getEntityPerformer(remover), e.getCause().name(), e.getEntity());
     }
 

@@ -14,6 +14,8 @@ public final class Main {
     private final API api;
     private final Messages messages;
     private static Main INSTANCE;
+    private final int commandSpeedLimit;
+    private final WeakHashMap<ProxiedCommandSender, Long> limitMap = new WeakHashMap<>();
     protected final int commandActionHistoryCount;
     public final HashCodeMap<ProxiedCommandSender, Void> inspecting = new HashCodeMap<>();
     public final WeakHashMap<ProxiedCommandSender, LinkedList<ChangeList>> commandActions = new WeakHashMap<>();
@@ -42,23 +44,23 @@ public final class Main {
             .setDefaultPermissionMessage("§c你没有足够的权限来执行当前指令!")
             .setDefaultUsage("§c指令用法错误!")
             .registerCommand(new cn.apisium.nekoguard.Commands(this));
-        if (commandSpeedLimit > 0) {
-            final WeakHashMap<ProxiedCommandSender, Long> map = new WeakHashMap<>();
-            commander.onPreCommand((a, b, c, d) -> {
-                if (a.hasPermission("nekoguard.commandlimit")) return true;
-                final long time = System.currentTimeMillis();
-                if (!map.containsKey(a)) {
-                    map.put(a, time);
-                    return true;
-                }
-                if (map.get(a) + commandSpeedLimit > time) {
-                    a.sendMessage(Constants.COMMAND_LIMIT);
-                    return false;
-                } else {
-                    map.put(a, time);
-                    return true;
-                }
-            });
+        this.commandSpeedLimit = commandSpeedLimit;
+        if (commandSpeedLimit > 0) commander.onPreCommand((a, b, c, d) -> isNotLimited(a));
+    }
+
+    public boolean isNotLimited(@NotNull final ProxiedCommandSender pcs) {
+        if (commandSpeedLimit <= 0 || pcs.hasPermission("nekoguard.commandlimit")) return true;
+        final long time = System.currentTimeMillis();
+        if (!limitMap.containsKey(pcs)) {
+            limitMap.put(pcs, time);
+            return true;
+        }
+        if (limitMap.get(pcs) + commandSpeedLimit > time) {
+            pcs.sendMessage(Constants.COMMAND_LIMIT);
+            return false;
+        } else {
+            limitMap.put(pcs, time);
+            return true;
         }
     }
 

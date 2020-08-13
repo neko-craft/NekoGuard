@@ -1,5 +1,7 @@
 package cn.apisium.nekoguard.bukkit;
 
+import cn.apisium.nekocommander.ProxiedCommandSender;
+import cn.apisium.nekoguard.Messages;
 import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.bukkit.utils.Utils;
 import cn.apisium.nekoguard.utils.ContainerRecord;
@@ -9,7 +11,9 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -19,10 +23,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class API {
     private final cn.apisium.nekoguard.API front;
+    private final Messages messages;
     private ArrayList<Object[]> itemsList = new ArrayList<>();
     private final ConcurrentHashMap<Integer, Object[]> mergedItems = new ConcurrentHashMap<>();
-    API(final cn.apisium.nekoguard.API front) {
+    API(final cn.apisium.nekoguard.API front, final Messages messages) {
         this.front = front;
+        this.messages = messages;
         Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> {
             final ArrayList<Object[]> list;
             synchronized (this) {
@@ -35,7 +41,7 @@ public final class API {
                 (ContainerRecord) it[1], (ContainerRecord) it[2], (long) it[3]
             );
         }, 1, 1);
-        Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> mergedItems.values().removeIf(arr -> {
+        if (Main.getPlugin().recordContainerActionByNonPlayer) Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> mergedItems.values().removeIf(arr -> {
             if (front.getFixedTime() - (Long) arr[0] < 60000000000L) return false;
             recordContainerAction((ItemStack) arr[1], (Inventory) arr[2], (Inventory) arr[3], (long) arr[0]);
             return true;
@@ -76,7 +82,7 @@ public final class API {
             else if (added < max) {
                 i.setAmount(added);
                 return;
-            }
+            } else mergedItems.remove(key);
             is.setAmount(max);
             recordContainerAction(is, source, target, time);
         }
@@ -114,5 +120,22 @@ public final class API {
         final Location loc = player.getLocation();
         front.recordPlayerSession(player.getUniqueId().toString(), player.getName(), isLogin, loc.getWorld().getName(),
             loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), player.getAddress() == null ? "" : player.getAddress().getHostString());
+    }
+
+    public void inspectBlock(@NotNull final Player player, @NotNull final Block block, final boolean isContainer) {
+        final ProxiedCommandSender pcs = ProxiedCommandSender.getInstance(player);
+        if (!Main.getInstance().isNotLimited(pcs)) return;
+        final Location loc = block.getLocation();
+        if (isContainer && block.getState() instanceof BlockInventoryHolder)
+            messages.sendContainerActionsMessage(pcs, loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), 0);
+        else messages.sendQueryBlockMessage(pcs, loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), 0);
+    }
+
+    public void inspectEntity(@NotNull final Player player, @NotNull final Entity entity, final boolean isContainer) {
+        final ProxiedCommandSender pcs = ProxiedCommandSender.getInstance(player);
+        if (!Main.getInstance().isNotLimited(pcs)) return;
+        if (isContainer && entity instanceof InventoryHolder)
+            messages.sendContainerActionsMessage(pcs, entity.getUniqueId().toString(), 0);
+        else messages.sendQuerySpawnMessage(pcs, entity.getUniqueId().toString(), 0);
     }
 }

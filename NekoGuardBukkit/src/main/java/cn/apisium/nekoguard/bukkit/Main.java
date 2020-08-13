@@ -81,7 +81,7 @@ public final class Main extends JavaPlugin {
             Objects.requireNonNull(getConfig().getString("measurementPrefix")),
             new BukkitCommander(this)
         );
-        api = new cn.apisium.nekoguard.bukkit.API(INSTANCE.getApi());
+        api = new cn.apisium.nekoguard.bukkit.API(INSTANCE.getApi(), INSTANCE.getMessages());
 
         getServer().getPluginManager().registerEvents(new Events(this), this);
 

@@ -96,12 +96,16 @@ public final class Utils {
     @Nullable
     public static ContainerRecord getContainerRecord(@Nullable final Inventory inv) {
         if (inv == null) return null;
-        final InventoryHolder h = inv.getHolder();
-        if (h instanceof Entity) return new ContainerRecord(((Entity) h).getUniqueId().toString());
-        else if (h instanceof BlockInventoryHolder) {
-            final Block b = ((BlockInventoryHolder) h).getBlock();
-            return new ContainerRecord(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
-        } else return null;
+        try {
+            final InventoryHolder h = inv.getHolder();
+            if (h instanceof Entity) return new ContainerRecord(((Entity) h).getUniqueId().toString());
+            else if (h instanceof BlockInventoryHolder) {
+                final Block b = ((BlockInventoryHolder) h).getBlock();
+                return new ContainerRecord(b.getWorld().getName(), b.getX(), b.getY(), b.getZ());
+            } else return null;
+        } catch (final Exception ignored) {
+            return null;
+        }
     }
 
     public static boolean hasDifferentSlot(@NotNull final InventoryType inv) {
