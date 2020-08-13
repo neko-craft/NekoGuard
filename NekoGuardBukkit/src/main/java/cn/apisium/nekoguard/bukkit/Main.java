@@ -47,6 +47,8 @@ public final class Main extends JavaPlugin {
     private API api;
     protected boolean recordMonsterKilledWithoutCustomName;
     protected boolean recordEntitiesNaturalSpawn;
+    protected boolean recordContainerActionByNonPlayer;
+    protected boolean mergeContainerAction;
 
     { PLUGIN = this; }
 
@@ -66,6 +68,8 @@ public final class Main extends JavaPlugin {
         }
         recordEntitiesNaturalSpawn = getConfig().getBoolean("recordEntitiesNaturalSpawn", false);
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
+        recordContainerActionByNonPlayer = getConfig().getBoolean("recordContainerActionByNonPlayer", false);
+        mergeContainerAction = getConfig().getBoolean("mergeContainerAction", true);
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,
             getConfig().getInt("commandActionHistoryCount", 3),

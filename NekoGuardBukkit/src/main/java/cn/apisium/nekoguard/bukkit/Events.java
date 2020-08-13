@@ -9,14 +9,9 @@ import cn.apisium.nekoguard.bukkit.utils.Utils;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Directional;
-import org.bukkit.block.data.type.Dispenser;
-import org.bukkit.block.data.type.Hopper;
 import org.bukkit.block.data.type.RedstoneWire;
 import org.bukkit.command.*;
 import org.bukkit.entity.*;
-import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -50,6 +45,20 @@ public final class Events implements Listener {
         api = plugin.getApi();
         this.plugin = plugin;
         this.messages = main.getMessages();
+
+        if (plugin.recordContainerActionByNonPlayer) plugin.getServer().getPluginManager()
+            .registerEvent(InventoryMoveItemEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                final InventoryMoveItemEvent e = (InventoryMoveItemEvent) e1;
+                if (e.getItem().getType().isEmpty()) return;
+                final Inventory s = e.getSource(), d = e.getDestination();
+                if (!Utils.isNeedToRecordContainerAction(s.getType()) || !Utils.isNeedToRecordContainerAction(d.getType())) return;
+                final InventoryHolder sh = s.getHolder(), dh = d.getHolder();
+                if (!NMSUtils.canItemBeAdded(d, e.getItem(),
+                    sh instanceof BlockInventoryHolder && dh instanceof BlockInventoryHolder
+                        ? ((BlockInventoryHolder) dh).getBlock().getFace(((BlockInventoryHolder) sh).getBlock()) : null)) return;
+                if (plugin.mergeContainerAction) api.recordContainerAction2(e.getItem().clone(), s, d);
+                else api.recordContainerAction(e.getItem().clone(), s, d);
+            }, plugin, true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -150,7 +159,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityBlockForm(final EntityBlockFormEvent e) {
-        if (!(e.getEntity() instanceof Snowman)) return;
+        if (e.getEntity().getType() != EntityType.SNOWMAN) return;
         final String id = "@" + e.getEntity().getType().getKey();
         api.recordBlockAction(e.getBlock(), id, true);
         api.recordBlockAction(e.getNewState(), id, false);
@@ -158,6 +167,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityChangeBlock(final EntityChangeBlockEvent e) {
+        if (e.getBlock().getType() == Material.REDSTONE_ORE) return;
         final String id = "@" + e.getEntityType().getKey();
         api.recordBlockAction(e.getBlock(), id, true);
         if (e.getTo().isAir()) return;
@@ -227,14 +237,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryMoveItem(final InventoryMoveItemEvent e) {
-        if (e.getItem().getType().isEmpty()) return;
-        final Inventory s = e.getSource(), d = e.getDestination();
-        if (!Utils.isNeedToRecordContainerAction(s.getType()) || !Utils.isNeedToRecordContainerAction(d.getType())) return;
-        final InventoryHolder sh = s.getHolder(), dh = d.getHolder();
-        if (!NMSUtils.canItemBeAdded(d, e.getItem(),
-            sh instanceof BlockInventoryHolder && dh instanceof BlockInventoryHolder
-                ? ((BlockInventoryHolder) dh).getBlock().getFace(((BlockInventoryHolder) sh).getBlock()) : null)) return;
-        api.recordContainerAction(e.getItem().clone(), s, d);
+
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

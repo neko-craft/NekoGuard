@@ -13,6 +13,8 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -110,5 +112,16 @@ public final class Utils {
                 return true;
             default: return false;
         }
+    }
+
+    public static int getItemStackId(@NotNull final Inventory source, @NotNull final Inventory target, @NotNull final ItemStack is) {
+        final ItemMeta meta = is.getItemMeta();
+        int hash = 31 + is.getType().hashCode();
+        hash *= 31;
+        hash += is.hasItemMeta() ? meta.hashCode() : 0;
+        hash *= 31;
+        hash += source.hashCode();
+        hash *= 31;
+        return hash + target.hashCode();
     }
 }

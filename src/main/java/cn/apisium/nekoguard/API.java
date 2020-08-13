@@ -392,5 +392,6 @@ public final class API {
         return page == 0 ? query.limit(10) : query.limit(10, page * 10);
     }
 
+    public long getFixedTime() { return curTime; }
     public long getCurrentTime() { return curTime++; }
 }

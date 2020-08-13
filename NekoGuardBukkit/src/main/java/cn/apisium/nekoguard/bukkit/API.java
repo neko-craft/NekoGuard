@@ -15,10 +15,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class API {
     private final cn.apisium.nekoguard.API front;
     private ArrayList<Object[]> itemsList = new ArrayList<>();
+    private final ConcurrentHashMap<Integer, Object[]> mergedItems = new ConcurrentHashMap<>();
     API(final cn.apisium.nekoguard.API front) {
         this.front = front;
         Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> {
@@ -33,6 +35,11 @@ public final class API {
                 (ContainerRecord) it[1], (ContainerRecord) it[2], (long) it[3]
             );
         }, 1, 1);
+        Bukkit.getScheduler().runTaskTimerAsynchronously(Main.getPlugin(), () -> mergedItems.values().removeIf(arr -> {
+            if (front.getFixedTime() - (Long) arr[0] < 60000000000L) return false;
+            recordContainerAction((ItemStack) arr[1], (Inventory) arr[2], (Inventory) arr[3], (long) arr[0]);
+            return true;
+        }), 20 * 60, 20 * 60);
     }
 
     public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target) {
@@ -40,6 +47,38 @@ public final class API {
         synchronized (this) {
             itemsList.add(new Object[]{is.clone(), Utils.getContainerRecord(source),
                 Utils.getContainerRecord(target), front.getCurrentTime()});
+        }
+    }
+
+    public void recordContainerAction(@NotNull final ItemStack is, @Nullable final Inventory source, @Nullable final Inventory target, final long time) {
+        if (source == null && target == null) return;
+        synchronized (this) {
+            itemsList.add(new Object[]{is.clone(), Utils.getContainerRecord(source),
+                Utils.getContainerRecord(target), time});
+        }
+    }
+
+    public void recordContainerAction2(@NotNull final ItemStack is, @NotNull final Inventory source, @NotNull final Inventory target) {
+        final int max = is.getMaxStackSize(), amount = is.getAmount();
+        if (max <= amount) {
+            recordContainerAction(is, source, target);
+            return;
+        }
+        final int key = Utils.getItemStackId(source, target, is);
+        final Object[] arr = mergedItems.get(key);
+        if (arr == null) mergedItems.put(key, new Object[] { front.getFixedTime(), is, source, target });
+        else {
+            final ItemStack i = (ItemStack) arr[1];
+            final long time = (long) arr[0];
+            arr[0] = front.getFixedTime();
+            final int added = i.getAmount() + amount;
+            if (added > max) i.setAmount(added - max);
+            else if (added < max) {
+                i.setAmount(added);
+                return;
+            }
+            is.setAmount(max);
+            recordContainerAction(is, source, target, time);
         }
     }
 

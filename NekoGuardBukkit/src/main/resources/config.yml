@@ -8,4 +8,6 @@ retentionPolicy: ''
 commandSpeedLimit: 500
 commandActionHistoryCount: 3
 recordMonsterKilledWithoutCustomName: false
-recordEntitiesNaturalSpawn: 3
+recordEntitiesNaturalSpawn: false
+recordContainerActionByNonPlayer: false
+mergeContainerAction: true
