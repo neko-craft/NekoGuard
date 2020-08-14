@@ -1,6 +1,7 @@
 package cn.apisium.nekoguard;
 
 import cn.apisium.nekoguard.utils.SimpleTimeClause;
+import cn.apisium.nekoguard.utils.Utils;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
@@ -9,6 +10,7 @@ import org.influxdb.dto.QueryResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 public final class Database {
@@ -47,7 +49,10 @@ public final class Database {
     }
 
     public void dropSeries(@NotNull final String table, @NotNull final Consumer<Boolean> onSuccess) {
-        query("DROP SERIES FROM \"" + table + "\"", it -> onSuccess.accept(!it.hasError() && it.getResults().isEmpty()));
+        query("DROP SERIES FROM \"" + table + "\"", it -> {
+            final List<QueryResult.Result> list = Utils.getResult(it);
+            onSuccess.accept(list != null && list.size() == 1 && !list.get(0).hasError() && list.get(0).getSeries() == null);
+        });
     }
 
     public void deleteSeries(@NotNull final String table, @Nullable final String time, @NotNull final Consumer<Boolean> onSuccess) {

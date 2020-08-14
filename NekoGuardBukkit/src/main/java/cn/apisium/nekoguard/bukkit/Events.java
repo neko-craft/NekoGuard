@@ -43,19 +43,42 @@ public final class Events implements Listener {
         api = plugin.getApi();
         this.plugin = plugin;
 
-        if (plugin.recordContainerActionByNonPlayer) plugin.getServer().getPluginManager()
-            .registerEvent(InventoryMoveItemEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
-                final InventoryMoveItemEvent e = (InventoryMoveItemEvent) e1;
-                if (e.getItem().getType().isEmpty()) return;
-                final Inventory s = e.getSource(), d = e.getDestination();
-                if (!Utils.isNeedToRecordContainerAction(s.getType()) || !Utils.isNeedToRecordContainerAction(d.getType())) return;
-                final InventoryHolder sh = s.getHolder(), dh = d.getHolder();
-                if (!NMSUtils.canItemBeAdded(d, e.getItem(),
-                    sh instanceof BlockInventoryHolder && dh instanceof BlockInventoryHolder
-                        ? ((BlockInventoryHolder) dh).getBlock().getFace(((BlockInventoryHolder) sh).getBlock()) : null)) return;
-                if (plugin.mergeContainerAction) api.recordContainerAction2(e.getItem().clone(), s, d);
-                else api.recordContainerAction(e.getItem().clone(), s, d);
-            }, plugin, true);
+        if (plugin.recordGrowth) {
+            plugin.getServer().getPluginManager()
+                .registerEvent(BlockGrowEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                    final BlockGrowEvent e = (BlockGrowEvent) e1;
+                    final String id = "#" + e.getNewState().getType().getKey();
+                    api.recordBlockAction(e.getBlock(), id, true);
+                    api.recordBlockAction(e.getNewState(), id, false);
+                }, plugin, true);
+            plugin.getServer().getPluginManager()
+                .registerEvent(LeavesDecayEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                    final Block b = ((LeavesDecayEvent) e1).getBlock();
+                    api.recordBlockAction(b, "#" + b.getType().getKey(), true);
+                }, plugin, true);
+        }
+        if (plugin.recordContainerActionByNonPlayer) {
+            plugin.getServer().getPluginManager()
+                .registerEvent(InventoryMoveItemEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                    final InventoryMoveItemEvent e = (InventoryMoveItemEvent) e1;
+                    if (e.getItem().getType().isEmpty()) return;
+                    final Inventory s = e.getSource(), d = e.getDestination();
+                    if (!Utils.isNeedToRecordContainerAction(s.getType()) || !Utils.isNeedToRecordContainerAction(d.getType())) return;
+                    final InventoryHolder sh = s.getHolder(), dh = d.getHolder();
+                    if (!NMSUtils.canItemBeAdded(d, e.getItem(),
+                        sh instanceof BlockInventoryHolder && dh instanceof BlockInventoryHolder
+                            ? ((BlockInventoryHolder) dh).getBlock().getFace(((BlockInventoryHolder) sh).getBlock()) : null)) return;
+                    if (plugin.mergeContainerAction) api.recordContainerAction2(e.getItem().clone(), s, d);
+                    else api.recordContainerAction(e.getItem().clone(), s, d);
+                }, plugin, true);
+            plugin.getServer().getPluginManager()
+                .registerEvent(BlockDispenseEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                    final BlockDispenseEvent e = (BlockDispenseEvent) e1;
+                    final BlockState state = e.getBlock().getState();
+                    if (!(state instanceof BlockInventoryHolder)) return;
+                    api.recordContainerAction(e.getItem(), ((BlockInventoryHolder) state).getInventory(), null);
+                }, plugin, true);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -122,6 +145,7 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockSpread(final BlockSpreadEvent e) {
+        if (!plugin.recordGrowth && Utils.isGrowing(e.getNewState().getType())) return;
         final String id = "#" + e.getBlock().getType().getKey();
         api.recordBlockAction(e.getBlock(), id, true);
         api.recordBlockAction(e.getNewState(), id, false);
@@ -204,7 +228,7 @@ public final class Events implements Listener {
             if (e.useInteractedBlock() != Event.Result.DENY) api.recordBlockAction(b, p, true);
             return;
         }
-        if ((item != null || e.getAction() != Action.RIGHT_CLICK_BLOCK) && main.isInspecting(p)) {
+        if ((item != null || (e.getAction() == Action.LEFT_CLICK_BLOCK)) && main.isInspecting(p)) {
             e.setCancelled(true);
             api.inspectBlock(p, b, e.getAction() == Action.RIGHT_CLICK_BLOCK);
             return;
@@ -246,9 +270,7 @@ public final class Events implements Listener {
         final Inventory inv = e.getView().getTopInventory();
         final InventoryType type = inv.getType();
         if (is == null || is.getType().isAir()) return;
-        if (e.getClickedInventory() == null) {
-            return;
-        }
+        if (e.getClickedInventory() == null) return;
         if (!Utils.isNeedToRecordContainerAction(type)) return;
         is = is.clone();
         if (e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
@@ -400,12 +422,5 @@ public final class Events implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerTakeLecternBook(final PlayerTakeLecternBookEvent e) {
         api.recordBlockAction(e.getLectern().getBlock(), e.getPlayer(), true);
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onBlockDispense(final BlockDispenseEvent e) {
-        final BlockState state = e.getBlock().getState();
-        if (!(state instanceof BlockInventoryHolder)) return;
-        api.recordContainerAction(e.getItem(), ((BlockInventoryHolder) state).getInventory(), null);
     }
 }

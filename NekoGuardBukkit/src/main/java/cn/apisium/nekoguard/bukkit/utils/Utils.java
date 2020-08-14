@@ -128,4 +128,48 @@ public final class Utils {
         hash *= 31;
         return hash + target.hashCode();
     }
+
+    public static boolean isGrowing(@NotNull final Material type) {
+        switch (type) {
+            // <editor-fold defaultstate="collapsed" desc="isGrowing">
+            case VINE:
+            case TWISTING_VINES:
+            case WEEPING_VINES:
+            case TWISTING_VINES_PLANT:
+            case WEEPING_VINES_PLANT:
+            case MUSHROOM_STEM:
+            case BROWN_MUSHROOM:
+            case MUSHROOM_STEW:
+            case BROWN_MUSHROOM_BLOCK:
+            case POTTED_BROWN_MUSHROOM:
+            case POTTED_RED_MUSHROOM:
+            case RED_MUSHROOM:
+            case RED_MUSHROOM_BLOCK:
+            case WHEAT:
+            case PUMPKIN:
+            case MELON:
+            case SUGAR_CANE:
+            case KELP:
+            case KELP_PLANT:
+            case BAMBOO:
+            case BAMBOO_SAPLING:
+            case CRIMSON_FUNGUS:
+            case WARPED_FUNGUS:
+            case OAK_SAPLING:
+            case SPRUCE_SAPLING:
+            case BIRCH_SAPLING:
+            case JUNGLE_SAPLING:
+            case ACACIA_SAPLING:
+            case DARK_OAK_SAPLING:
+            case CACTUS:
+            case GRASS_BLOCK:
+            case PODZOL:
+            case CRIMSON_NYLIUM:
+            case WARPED_NYLIUM:
+            case MYCELIUM:
+                // </editor-fold>
+                return true;
+            default: return false;
+        }
+    }
 }

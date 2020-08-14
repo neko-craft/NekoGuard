@@ -53,7 +53,7 @@ public final class Constants {
         if (page == 1) la.setColor(ChatColor.GRAY);
         else {
             la.setColor(ChatColor.YELLOW);
-            la.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/nekoguard page " + (page - 1)));
+            la.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/nekoguard page " + (page - 2)));
         }
         if (page == allPage) lr.setColor(ChatColor.GRAY);
         else {

@@ -397,6 +397,6 @@ public final class Messages {
             );
             sender.sendMessage(Constants.makeFooter(page, all));
         })));
-        main.addCommandHistory(sender, it -> sendSessionMessage(sender, it, fn));
+        main.addCommandHistory(sender, it -> sendExplosionMessage(sender, it, fn));
     }
 }

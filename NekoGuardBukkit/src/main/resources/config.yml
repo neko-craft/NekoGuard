@@ -10,4 +10,5 @@ commandActionHistoryCount: 3
 recordMonsterKilledWithoutCustomName: false
 recordEntitiesNaturalSpawn: false
 recordContainerActionByNonPlayer: false
+recordGrowth: false
 mergeContainerAction: true

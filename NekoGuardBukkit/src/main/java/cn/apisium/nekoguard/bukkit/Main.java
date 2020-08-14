@@ -49,6 +49,7 @@ public final class Main extends JavaPlugin {
     protected boolean recordEntitiesNaturalSpawn;
     protected boolean recordContainerActionByNonPlayer;
     protected boolean mergeContainerAction;
+    protected boolean recordGrowth;
 
     { PLUGIN = this; }
 
@@ -69,6 +70,7 @@ public final class Main extends JavaPlugin {
         recordEntitiesNaturalSpawn = getConfig().getBoolean("recordEntitiesNaturalSpawn", false);
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
         recordContainerActionByNonPlayer = getConfig().getBoolean("recordContainerActionByNonPlayer", false);
+        recordGrowth = getConfig().getBoolean("recordGrowth", false);
         mergeContainerAction = getConfig().getBoolean("mergeContainerAction", true);
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,
