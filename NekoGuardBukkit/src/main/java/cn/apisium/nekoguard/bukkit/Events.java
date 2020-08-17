@@ -224,16 +224,20 @@ public final class Events implements Listener {
         final Block b = e.getClickedBlock();
         final ItemStack item = e.getItem();
         if (b == null) return;
-        if (e.getAction() == Action.PHYSICAL && b.getType() == Material.FARMLAND) {
+        final Action action = e.getAction();
+        if (action == Action.PHYSICAL && b.getType() == Material.FARMLAND) {
             if (e.useInteractedBlock() != Event.Result.DENY) api.recordBlockAction(b, p, true);
             return;
         }
-        if ((item != null || (e.getAction() == Action.LEFT_CLICK_BLOCK)) && main.isInspecting(p)) {
-            e.setCancelled(true);
-            api.inspectBlock(p, b, e.getAction() == Action.RIGHT_CLICK_BLOCK);
-            return;
+        if (main.isInspecting(p)) switch (action) {
+            case LEFT_CLICK_BLOCK:
+                api.inspectBlock(p, b, e.getAction() == Action.RIGHT_CLICK_BLOCK);
+                e.setCancelled(true);
+                return;
+            case RIGHT_CLICK_BLOCK:
+                if (item != null && item.getType().isBlock()) return;
         }
-        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && e.useInteractedBlock() != Event.Result.DENY) switch (b.getType()) {
+        if (action == Action.RIGHT_CLICK_BLOCK && e.useInteractedBlock() != Event.Result.DENY) switch (b.getType()) {
             case LECTERN: {
                 if (item == null || item.getType() != Material.WRITTEN_BOOK) return;
                 api.recordBlockAction(b, p, true);
