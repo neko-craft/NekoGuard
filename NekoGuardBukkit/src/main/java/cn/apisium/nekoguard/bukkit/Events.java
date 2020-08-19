@@ -4,6 +4,7 @@ import cn.apisium.nekoguard.Constants;
 import cn.apisium.nekoguard.bukkit.utils.CommandSenderType;
 import cn.apisium.nekoguard.bukkit.utils.NMSUtils;
 import cn.apisium.nekoguard.bukkit.utils.Utils;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.*;
@@ -27,7 +28,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.projectiles.ProjectileSource;
 
-import java.util.Collection;
 import java.util.List;
 
 public final class Events implements Listener {
@@ -120,27 +120,36 @@ public final class Events implements Listener {
                     if (!list.isEmpty()) target = list.get(0).asString();
                 }
         }
-        if (target == null) target = entity instanceof Mob ? Utils.getEntityPerformer(((Mob) entity).getTarget()) : null;
+        if (target == null && entity instanceof Mob) target = Utils.getEntityPerformer(((Mob) entity).getTarget());
         final String type = Utils.getEntityPerformer(entity);
         final Location loc = e.getLocation();
         boolean isNear = false;
-        if (target == null) {
-            Collection<Player> c = loc.getNearbyPlayers(radius);
-            if (!c.isEmpty()) {
-                target = ((Player) c.toArray()[0]).getUniqueId().toString();
-                isNear = true;
-            }
+        if (target == null) for (final Player p : loc.getNearbyPlayers(radius)) if (p.getGameMode() != GameMode.SPECTATOR) {
+            target = p.getUniqueId().toString();
+            isNear = true;
+            break;
         }
+        if (e.blockList().isEmpty()) {
+            if (!plugin.recordExplosionWithoutBlocksDestroying) return;
+        } else api.recordBlocksBreak(e.blockList(), type);
         frontApi.recordExplosion(type, target == null ? "" : target, isNear,
             loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-        if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), type);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockExplode(final BlockExplodeEvent e) {
-        if (e.blockList().isEmpty()) return;
-        api.recordBlocksBreak(e.blockList(), "#" + e.getBlock().getType().getKey());
+        final String performer = "#" + e.getBlock().getType().getKey();
+        if (e.blockList().isEmpty()) {
+            if (!plugin.recordExplosionWithoutBlocksDestroying) return;
+        } else api.recordBlocksBreak(e.blockList(), performer);
+        final Location loc = e.getBlock().getLocation();
+        String target = "";
+        for (final Player p : loc.getNearbyPlayers(6)) if (p.getGameMode() != GameMode.SPECTATOR) {
+            target = p.getUniqueId().toString();
+            break;
+        }
+        frontApi.recordExplosion(performer, target, true,
+            loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
