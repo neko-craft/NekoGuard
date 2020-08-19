@@ -23,6 +23,6 @@ public final class KeyedChunk {
     }
 
     public static int getKey(final String world, final int x, final int z) {
-        return (world + "|" + x + "|" + z).hashCode();
+        return ((31 + x) * 31 + z) * 31 + world.hashCode();
     }
 }

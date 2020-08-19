@@ -88,11 +88,7 @@ public final class Messages {
     public void sendQueryBlockMessage(@NotNull final ProxiedCommandSender sender, @NotNull final String world, final int x, final int y, final int z, final int page) {
         Objects.requireNonNull(sender);
         Objects.requireNonNull(world);
-        sendQueryBlockMessage(sender, page, it -> it.where(eq("world", world))
-            .and(eq("x", x))
-            .and(eq("y", y))
-            .and(eq("z", z))
-        );
+        sendQueryBlockMessage(sender, page, it -> it.where(eq("$i", Utils.getBlockInspectTag(world, x, y, z))));
         main.addCommandHistory(sender, it -> sendQueryBlockMessage(sender, world, x, y, z, it));
     }
 

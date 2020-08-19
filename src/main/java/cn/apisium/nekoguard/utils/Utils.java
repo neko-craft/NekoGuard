@@ -150,7 +150,12 @@ public final class Utils {
     }
     @NotNull
     public static String getBlockPerformer(@NotNull final String world, final int x, final int y, final int z) {
-        return "#" + world + "|" + x + "|" + y + "|" + z;
+        return "#" + getBlockInspectTag(world, x, y, z);
+    }
+
+    @NotNull
+    public static String getBlockInspectTag(@NotNull final String world, final int x, final int y, final int z) {
+        return world + "|" + x + "|" + y + "|" + z;
     }
 
     public static TextComponent getEntityTypePerformerComponent(@NotNull final String id, @NotNull final String type) {

@@ -79,6 +79,13 @@ public final class Events implements Listener {
                     api.recordContainerAction(e.getItem(), ((BlockInventoryHolder) state).getInventory(), null);
                 }, plugin, true);
         }
+        if (plugin.recordBlockFadeAndIceFormed) plugin.getServer().getPluginManager()
+            .registerEvent(BlockFadeEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                final BlockFadeEvent e = (BlockFadeEvent) e1;
+                final String id = "#" + e.getNewState().getType().getKey();
+                api.recordBlockAction(e.getBlock(), id, true);
+                api.recordBlockAction(e.getNewState(), id, false);
+            }, plugin, true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -177,7 +184,13 @@ public final class Events implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockForm(final BlockFormEvent e) {
-        final String id = "#" + e.getNewState().getType().getKey();
+        final Material type = e.getNewState().getType();
+        if (!plugin.recordBlockFadeAndIceFormed) switch (type) {
+            case ICE:
+            case SNOW:
+                return;
+        }
+        final String id = "#" + type.getKey();
         api.recordBlockAction(e.getBlock(), id, true);
         api.recordBlockAction(e.getNewState(), id, false);
     }

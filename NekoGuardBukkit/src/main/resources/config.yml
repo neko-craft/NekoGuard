@@ -11,5 +11,6 @@ recordMonsterKilledWithoutCustomName: false
 recordEntitiesNaturalSpawn: false
 recordContainerActionByNonPlayer: false
 recordExplosionWithoutBlocksDestroying: false
+recordBlockFadeAndIceFormed: false
 recordGrowth: false
 mergeContainerAction: true

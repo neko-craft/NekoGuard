@@ -30,25 +30,29 @@ public final class SeriesMapper {
     public final class Mapper {
         private final QueryResult.Series data;
         private final int[] map2;
+        private final int columnsCount;
         public final int count;
         protected Mapper(@NotNull final QueryResult.Series data) {
             this.data = data;
             count = data.getValues().size();
-            map2 = new int[size];
             final List<String> list = data.getColumns();
+            columnsCount = list.size();
+            map2 = new int[columnsCount];
             int i = list.size();
             while (i-- != 0) {
                 final Integer key = map.get(list.get(i));
-                if (key != null) map2[i] = key;
+                map2[i] = key == null ? -1 : key;
             }
         }
 
         @NotNull
         public Object[] get(final int index) {
             final List<?> list = data.getValues().get(index);
-            int i = list.size();
+            int i = columnsCount;
             final Object[] arr = new Object[size];
-            while (i-- != 0) arr[map2[i]] = list.get(i);
+            while (i-- != 0) {
+                if (map2[i] != -1) arr[map2[i]] = list.get(i);
+            }
             return arr;
         }
 

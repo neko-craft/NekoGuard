@@ -51,6 +51,7 @@ public final class Main extends JavaPlugin {
     protected boolean mergeContainerAction;
     protected boolean recordGrowth;
     protected boolean recordExplosionWithoutBlocksDestroying;
+    protected boolean recordBlockFadeAndIceFormed;
 
     { PLUGIN = this; }
 
@@ -72,8 +73,9 @@ public final class Main extends JavaPlugin {
         recordMonsterKilledWithoutCustomName = getConfig().getBoolean("recordMonsterKilledWithoutCustomName", false);
         recordContainerActionByNonPlayer = getConfig().getBoolean("recordContainerActionByNonPlayer", false);
         recordGrowth = getConfig().getBoolean("recordGrowth", false);
-        mergeContainerAction = getConfig().getBoolean("mergeContainerAction", true);
         recordExplosionWithoutBlocksDestroying = getConfig().getBoolean("recordExplosionWithoutBlocksDestroying", false);
+        recordBlockFadeAndIceFormed = getConfig().getBoolean("recordBlockFadeAndIceFormed", false);
+        mergeContainerAction = getConfig().getBoolean("mergeContainerAction", true);
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,
             getConfig().getInt("commandActionHistoryCount", 3),

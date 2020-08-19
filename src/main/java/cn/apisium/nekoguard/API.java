@@ -168,11 +168,12 @@ public final class API {
         db.write(Point.measurement(blockRecords)
             .tag("performer", performer)
             .tag("action", isBreak ? "0" : "1")
-            .tag("world", world)
+            .tag("block", block)
+            .tag("$i", Utils.getBlockInspectTag(world, x, y, z))
+            .addField("world", world)
             .addField("x", x)
             .addField("y", y)
             .addField("z", z)
-            .addField("block", block)
             .time(curTime++, TimeUnit.NANOSECONDS)
             .build()
         );
@@ -234,13 +235,15 @@ public final class API {
             if (source.world == null) {
                 if (source.entity != null) builder
                     .tag("se", source.entity)
-                    .tag("sw", "")
+                    .tag("$s", "")
+                    .addField("tw", "")
                     .addField("sx", (Number) null)
                     .addField("sy", (Number) null)
                     .addField("sz", (Number) null);
             } else builder
                 .tag("se", "")
-                .tag("sw", source.world)
+                .tag("$s", Utils.getBlockInspectTag(source.world, source.x, source.y, source.z))
+                .addField("sw", source.world)
                 .addField("sx", source.x)
                 .addField("sy", source.y)
                 .addField("sz", source.z);
@@ -249,13 +252,15 @@ public final class API {
             if (target.world == null) {
                 if (target.entity != null) builder
                     .tag("te", target.entity)
-                    .tag("tw", "")
+                    .tag("$t", "")
+                    .addField("tw", "")
                     .addField("tx", (Number) null)
                     .addField("ty", (Number) null)
                     .addField("tz", (Number) null);
             } else builder
                 .tag("te", "")
-                .tag("tw", target.world)
+                .tag("$t", Utils.getBlockInspectTag(target.world, target.x, target.y, target.z))
+                .addField("tw", target.world)
                 .addField("tx", target.x)
                 .addField("ty", target.y)
                 .addField("tz", target.z);
@@ -311,9 +316,9 @@ public final class API {
     }
 
     public static void processSingleContainerBlockQuery(@NotNull final SelectQueryImpl query, @NotNull final String world, final int x, final int y, final int z) {
-        query.where()
-            .andNested().and(eq("sw", world)).and(eq("sx", x)).and(eq("sy", y)).and(eq("sz", z)).close()
-            .orNested().and(eq("tw", world)).and(eq("tx", x)).and(eq("ty", y)).and(eq("tz", z)).close();
+        final String tag = Utils.getBlockInspectTag(world, x, y, z);
+        query.where(eq("$s", tag))
+            .or(eq("$t", tag));
     }
     public static void processSingleContainerEntityQuery(@NotNull final SelectQueryImpl query, @NotNull final String entity) {
         query.where().andNested().and(eq("se", entity)).or(eq("te", entity)).close();

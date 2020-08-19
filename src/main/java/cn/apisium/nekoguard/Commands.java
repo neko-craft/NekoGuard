@@ -15,6 +15,7 @@ import org.apache.commons.lang.ObjectUtils;
 import org.influxdb.dto.QueryResult;
 import org.influxdb.querybuilder.SelectQueryImpl;
 import org.influxdb.querybuilder.WhereQueryImpl;
+import org.influxdb.querybuilder.clauses.Clause;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -164,7 +165,7 @@ public final class Commands implements BaseCommand {
                 if (name != null) query.and(eq("name", name));
                 final String id = Utils.PLATFORM.getPlayerUUIDByName(player, sender);
                 if (id != null) query.and(eq("id", id));
-                if (near != null && near) processLocationQuery(result, query, sender);
+                if (near != null && near) processLocationQuery(result, query, sender, false);
             });
         }
 
@@ -189,7 +190,7 @@ public final class Commands implements BaseCommand {
                 final boolean drop = isDrop == null || isDrop, pickup = isPickup == null || isPickup;
                 if (drop && !pickup) it.where(eq("action", "0"));
                 else if (!drop && pickup) it.where(eq("action", "1"));
-                processQuery(result, it, sender, false);
+                processQuery(result, it, sender, false, false);
             });
         }
 
@@ -208,7 +209,7 @@ public final class Commands implements BaseCommand {
             messages.sendQueryBlockMessage(sender, 0, it -> {
                 if (result.has("block")) it.where(
                     regex("block", "/^(minecraft:)?" + result.valueOf("block") + "/"));
-                processQuery(result, it, sender, false);
+                processQuery(result, it, sender, false, true);
             });
         }
 
@@ -233,7 +234,7 @@ public final class Commands implements BaseCommand {
                     if (type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
                 }
                 if (type != null) it.where(eq("type", type));
-                processQuery(result, it, sender, false);
+                processQuery(result, it, sender, false, false);
             });
         }
 
@@ -262,7 +263,7 @@ public final class Commands implements BaseCommand {
                     if (!type.startsWith("@") && type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
                 }
                 if (type != null) it.where(eq("target", type));
-                processQuery(result, it, sender, false);
+                processQuery(result, it, sender, false, false);
             });
         }
 
@@ -349,7 +350,7 @@ public final class Commands implements BaseCommand {
         public void rollbackBlocks(@NotNull final ProxiedCommandSender sender, @NotNull final OptionSet result) {
             try {
                 final SelectQueryImpl query = api.queryBlock().orderBy(asc());
-                processQuery(result, query, sender, true);
+                processQuery(result, query, sender, true, true);
                 if (result.has("block")) query.where(
                     regex("block", "/^(minecraft:)?" + result.valueOf("block") + "/"));
                 main.getDatabase().query(query, res -> {
@@ -429,7 +430,7 @@ public final class Commands implements BaseCommand {
                     if (type.length() != 36) type = Utils.PLATFORM.getPerformerQueryName(type, sender);
                 }
                 if (type != null) query.where(eq("type", type));
-                processQuery(result, query, sender, true);
+                processQuery(result, query, sender, true, false);
                 main.getDatabase().query(query, res -> {
                     final QueryResult.Series data = Utils.getFirstResult(res);
                     if (data == null) {
@@ -446,7 +447,13 @@ public final class Commands implements BaseCommand {
         }
     }
 
-    private void processLocationQuery(@NotNull final OptionSet cmd, final WhereQueryImpl<SelectQueryImpl> q, @NotNull final ProxiedCommandSender sender) {
+    private Clause processWorldQuery(@NotNull final String world, @Nullable final String key) {
+        return key == null
+            ? eq("world", world)
+            : regex(key, "/^" + world + "/");
+    }
+
+    private void processLocationQuery(@NotNull final OptionSet cmd, final WhereQueryImpl<SelectQueryImpl> q, @NotNull final ProxiedCommandSender sender, final boolean isBlockAction) {
         Integer lx = (Integer) cmd.valueOf("x"),
             ly = (Integer) cmd.valueOf("y"),
             lz = (Integer) cmd.valueOf("z"),
@@ -462,13 +469,13 @@ public final class Commands implements BaseCommand {
             ly = (int) sender.y;
             lz = (int) sender.z;
         }
-        q.andNested().and(eq("world", world))
+        q.andNested().and(processWorldQuery(world, isBlockAction ? "$i" : null))
             .and(gte("x", lx - r)).and(lte("x", lx + r))
             .and(gte("y", ly - r)).and(lte("y", ly + r))
             .and(gte("z", lz - r)).and(lte("z", lz + r)).close();
     }
 
-    private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final ProxiedCommandSender sender, final boolean isRollback) {
+    private void processQuery(@NotNull final OptionSet cmd, final SelectQueryImpl q, @NotNull final ProxiedCommandSender sender, final boolean isRollback, final boolean isBlockAction) {
         final WhereQueryImpl<SelectQueryImpl> query = q.where();
         if (isRollback || cmd.has("time")) {
             final Object t = cmd.valueOf("time");
@@ -480,7 +487,7 @@ public final class Commands implements BaseCommand {
         }
         if (cmd.has("performer")) query.and(eq("performer",
             Utils.PLATFORM.getPerformerQueryName((String) cmd.valueOf("performer"), sender)));
-        if (!cmd.has("global")) processLocationQuery(cmd, query, sender);
+        if (!cmd.has("global")) processLocationQuery(cmd, query, sender, isBlockAction);
     }
 
     private void processContainerQuery(final OptionSet cmd, final SelectQueryImpl q, final ProxiedCommandSender sender, final boolean isRollback) {
@@ -520,11 +527,11 @@ public final class Commands implements BaseCommand {
             }
             if (se == null && te == null && sw == null && tw == null) {
                 if (e != null) query.andNested().and(eq("se", e)).or(eq("te", e)).close();
-                else if (w != null && x != null && y != null && z != null) query.andNested().and(eq("sw", w))
+                else if (w != null && x != null && y != null && z != null) query.andNested().and(processWorldQuery(w, "$s"))
                     .and(gte("sx", x - r)).and(lte("sx", x + r))
                     .and(gte("sy", y - r)).and(lte("sy", y + r))
                     .and(gte("sz", z - r)).and(lte("sz", z + r)).close()
-                    .orNested().and(eq("tw", w))
+                    .orNested().and(processWorldQuery(w, "$t"))
                     .and(gte("tx", x - r)).and(lte("tx", x + r))
                     .and(gte("ty", y - r)).and(lte("ty", y + r))
                     .and(gte("tz", z - r)).and(lte("tz", z + r)).close();
@@ -538,7 +545,7 @@ public final class Commands implements BaseCommand {
                         sx = (Integer) ObjectUtils.defaultIfNull(sx, x);
                         sy = (Integer) ObjectUtils.defaultIfNull(sy, y);
                         sz = (Integer) ObjectUtils.defaultIfNull(sz, z);
-                        query.andNested().and(eq("sw", sw))
+                        query.andNested().and(processWorldQuery(sw, "$s"))
                             .and(gte("sx", sx - r)).and(lte("sx", sx + r))
                             .and(gte("sy", sy - r)).and(lte("sy", sy + r))
                             .and(gte("sz", sz - r)).and(lte("sz", sz + r)).close();
@@ -549,7 +556,7 @@ public final class Commands implements BaseCommand {
                         tx = (Integer) ObjectUtils.defaultIfNull(tx, x);
                         ty = (Integer) ObjectUtils.defaultIfNull(ty, y);
                         tz = (Integer) ObjectUtils.defaultIfNull(tz, z);
-                        query.andNested().and(eq("tw", tw))
+                        query.andNested().and(processWorldQuery(tw, "$t"))
                             .and(gte("tx", tx - r)).and(lte("tx", tx + r))
                             .and(gte("ty", ty - r)).and(lte("ty", ty + r))
                             .and(gte("tz", tz - r)).and(lte("tz", tz + r)).close();
