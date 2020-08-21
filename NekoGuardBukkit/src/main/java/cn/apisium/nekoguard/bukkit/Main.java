@@ -16,7 +16,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-@Plugin(name = "NekoGuard", version = "0.0.0")
+@Plugin(name = "NekoGuard", version = "0.0.1")
 @Description("An essential plugin used in NekoCraft.")
 @Author("Shirasawa")
 @Website("https://apisium.cn")
@@ -62,10 +62,10 @@ public final class Main extends JavaPlugin {
         saveDefaultConfig();
         if (!Constants.IS_PAPER) getLogger().warning("We strongly recommend that you use PaperSpigot for better effects. Please visit here: https://papermc.io");
         if (getServer().spigot().getConfig().getInt("world-settings.default.hopper-amount", 1) > 1)
-            getLogger().warning("the hopper-amount is greater than 1, container records may be inaccurate!");
+            getLogger().warning("the hopper-amount is bigger than 1, container records may be inaccurate!");
         final String url = getConfig().getString("url");
         if (url == null || url.equals("")) {
-            getLogger().warning("No InfluexDB url provided.");
+            getLogger().warning("No InfluxDB url provided.");
             setEnabled(false);
             return;
         }
