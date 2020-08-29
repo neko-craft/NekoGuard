@@ -126,7 +126,8 @@ public final class Utils {
         } else if (performer.startsWith("#")) {
             s1 = "方块:";
             s2 = getBlockName(performer.substring(1));
-        } else return getPlayerPerformerNameComponent(performer, pad);
+        } else if (performer.length() == 36) return getPlayerPerformerNameComponent(performer, pad);
+        else return new TextComponent(performer);
         final TextComponent t = new TextComponent(s1);
         t.setColor(ChatColor.GRAY);
         final TranslatableComponent t1 = new TranslatableComponent(Strings.padEnd(s2, 16, ' '));

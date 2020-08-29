@@ -13,4 +13,5 @@ recordContainerActionByNonPlayer: false
 recordExplosionWithoutBlocksDestroying: false
 recordBlockFadeAndIceFormed: false
 recordGrowth: false
+recordRaid: false
 mergeContainerAction: true

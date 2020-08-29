@@ -21,6 +21,7 @@ import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
+import org.bukkit.event.raid.RaidTriggerEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.vehicle.*;
 import org.bukkit.inventory.*;
@@ -85,6 +86,13 @@ public final class Events implements Listener {
                 final String id = "#" + e.getNewState().getType().getKey();
                 api.recordBlockAction(e.getBlock(), id, true);
                 api.recordBlockAction(e.getNewState(), id, false);
+            }, plugin, true);
+        if (plugin.recordRaid) plugin.getServer().getPluginManager()
+            .registerEvent(RaidTriggerEvent.class, this, EventPriority.MONITOR, (l, e1) -> {
+                final RaidTriggerEvent e = (RaidTriggerEvent) e1;
+                final Location loc = e.getRaid().getLocation();
+                frontApi.recordExplosion("RAID", e.getPlayer().getUniqueId().toString(), false,
+                    loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
             }, plugin, true);
     }
 

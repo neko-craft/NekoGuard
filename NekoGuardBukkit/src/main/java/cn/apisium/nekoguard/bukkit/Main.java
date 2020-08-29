@@ -16,8 +16,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-@Plugin(name = "NekoGuard", version = "0.0.1")
-@Description("An essential plugin used in NekoCraft.")
+@Plugin(name = "NekoGuard", version = "0.0.2")
+@Description("A protection and rollback plugin.")
 @Author("Shirasawa")
 @Website("https://apisium.cn")
 @ApiVersion(ApiVersion.Target.v1_13)
@@ -50,6 +50,7 @@ public final class Main extends JavaPlugin {
     protected boolean recordContainerActionByNonPlayer;
     protected boolean mergeContainerAction;
     protected boolean recordGrowth;
+    protected boolean recordRaid;
     protected boolean recordExplosionWithoutBlocksDestroying;
     protected boolean recordBlockFadeAndIceFormed;
 
@@ -75,6 +76,7 @@ public final class Main extends JavaPlugin {
         recordGrowth = getConfig().getBoolean("recordGrowth", false);
         recordExplosionWithoutBlocksDestroying = getConfig().getBoolean("recordExplosionWithoutBlocksDestroying", false);
         recordBlockFadeAndIceFormed = getConfig().getBoolean("recordBlockFadeAndIceFormed", false);
+        recordRaid = getConfig().getBoolean("recordRaid", false);
         mergeContainerAction = getConfig().getBoolean("mergeContainerAction", true);
         INSTANCE = new cn.apisium.nekoguard.Main(
             url,
